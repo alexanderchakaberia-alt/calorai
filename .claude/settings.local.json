@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(git add *)",
+      "Bash(git init *)",
+      "Bash(git commit -m 'Initialize project with camera capture feature *)"
+    ]
+  }
+}
