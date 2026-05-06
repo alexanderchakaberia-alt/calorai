@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { DEMO_USER_ID, type ApiErrorResponse, type GetGoalsResponse, type UpdateGoalsRequest } from "@/lib/types";
+import { type ApiErrorResponse, type GetGoalsResponse, type UpdateGoalsRequest } from "@/lib/types";
 import { getDailyGoals, upsertDailyGoals } from "@/lib/db";
+import { requireUserId } from "@/lib/require-auth";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json<ApiErrorResponse>({ error: message }, { status });
@@ -8,7 +9,11 @@ function jsonError(message: string, status = 400) {
 
 export async function GET() {
   try {
-    const goals = await getDailyGoals(DEMO_USER_ID);
+    const authResult = await requireUserId();
+    if (authResult instanceof NextResponse) return authResult;
+    const { userId } = authResult;
+
+    const goals = await getDailyGoals(userId);
     return NextResponse.json<GetGoalsResponse>({ goals });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch goals.";
@@ -18,6 +23,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const authResult = await requireUserId();
+    if (authResult instanceof NextResponse) return authResult;
+    const { userId } = authResult;
+
     const body = (await req.json()) as Partial<UpdateGoalsRequest>;
     if (!body || typeof body !== "object") return jsonError("Invalid JSON body.", 400);
 
@@ -33,7 +42,7 @@ export async function POST(req: Request) {
       if (!Number.isFinite(v) || v < 0) return jsonError(`${k} must be a non-negative number.`, 400);
     }
 
-    const goals = await upsertDailyGoals(DEMO_USER_ID, next);
+    const goals = await upsertDailyGoals(userId, next);
     return NextResponse.json<GetGoalsResponse>({ goals });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to update goals.";

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { DEMO_USER_ID, type ApiErrorResponse, type CreateMealRequest, type GetMealsResponse, type ISODateString } from "@/lib/types";
+import { type ApiErrorResponse, type CreateMealRequest, type GetMealsResponse, type ISODateString } from "@/lib/types";
 import { addMealEntry, getDailyTotals, getMealsForDate } from "@/lib/db";
+import { requireUserId } from "@/lib/require-auth";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json<ApiErrorResponse>({ error: message }, { status });
@@ -12,14 +13,18 @@ function isISODate(s: string): s is ISODateString {
 
 export async function GET(req: Request) {
   try {
+    const authResult = await requireUserId();
+    if (authResult instanceof NextResponse) return authResult;
+    const { userId } = authResult;
+
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date");
     if (!date) return jsonError("Missing required query param: date (YYYY-MM-DD).", 400);
     if (!isISODate(date)) return jsonError("Invalid date format. Expected YYYY-MM-DD.", 400);
 
     const [meals, totals] = await Promise.all([
-      getMealsForDate(DEMO_USER_ID, date),
-      getDailyTotals(DEMO_USER_ID, date),
+      getMealsForDate(userId, date),
+      getDailyTotals(userId, date),
     ]);
     return NextResponse.json<GetMealsResponse>({ date, meals, totals });
   } catch (err) {
@@ -30,6 +35,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const authResult = await requireUserId();
+    if (authResult instanceof NextResponse) return authResult;
+    const { userId } = authResult;
+
     const body = (await req.json()) as Partial<CreateMealRequest>;
     if (!body || typeof body !== "object") return jsonError("Invalid JSON body.", 400);
 
@@ -51,7 +60,7 @@ export async function POST(req: Request) {
 
     const portion = typeof body.portion === "string" && body.portion.trim() ? body.portion.trim() : undefined;
 
-    const meal = await addMealEntry(DEMO_USER_ID, date, {
+    const meal = await addMealEntry(userId, date, {
       food_name,
       calories,
       protein,

@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { requireUserId } from "@/lib/require-auth";
 
 const DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
@@ -65,6 +66,9 @@ function validateResult(x: unknown): AnalyzeFoodResult {
 
 export async function POST(req: Request) {
   try {
+    const authResult = await requireUserId();
+    if (authResult instanceof NextResponse) return authResult;
+
     const apiKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
     if (!apiKey) {
       return jsonError("Missing Groq API key in environment variables.", 500);

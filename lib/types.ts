@@ -1,5 +1,3 @@
-export const DEMO_USER_ID = "00000000-0000-0000-0000-000000000001" as const;
-
 export type ISODateString = `${number}-${number}-${number}`; // YYYY-MM-DD
 
 export type MacroTotals = {
