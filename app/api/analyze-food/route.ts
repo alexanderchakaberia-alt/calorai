@@ -2,7 +2,9 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { apiErrorFromUnknown } from "@/lib/api-helpers";
 import { requireUserId } from "@/lib/require-auth";
+import { isGroqConfigured, groqNotConfiguredResponse } from "@/lib/server-env";
 
 const DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
@@ -15,8 +17,8 @@ type AnalyzeFoodResult = {
   carbs: number;
 };
 
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
+function jsonError(message: string, status = 400, code?: string) {
+  return NextResponse.json({ error: message, ...(code ? { code } : {}) }, { status });
 }
 
 function extractJsonObject(text: unknown): unknown {
@@ -69,16 +71,21 @@ export async function POST(req: Request) {
     const authResult = await requireUserId();
     if (authResult instanceof NextResponse) return authResult;
 
-    const apiKey = process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY;
-    if (!apiKey) {
-      return jsonError("Missing Groq API key in environment variables.", 500);
+    if (!isGroqConfigured()) return groqNotConfiguredResponse();
+
+    const apiKey = (process.env.GROQ_API_KEY || process.env.NEXT_PUBLIC_GROQ_API_KEY)!.trim();
+    const model = (process.env.GROQ_VISION_MODEL || DEFAULT_VISION_MODEL).trim();
+
+    let body: { imageBase64?: unknown };
+    try {
+      body = (await req.json()) as { imageBase64?: unknown };
+    } catch {
+      return jsonError("Invalid JSON body.", 400, "BAD_REQUEST");
     }
 
-    const body = (await req.json().catch(() => null)) as { imageBase64?: unknown } | null;
     const dataUrl = normalizeImageDataUrl(body?.imageBase64);
 
     const groq = new Groq({ apiKey });
-    const model = process.env.GROQ_VISION_MODEL || DEFAULT_VISION_MODEL;
 
     const systemPrompt = [
       "You are a nutrition assistant.",
@@ -109,9 +116,19 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error(err);
-    const message = err instanceof Error ? err.message : "Failed to analyze food image.";
-    return jsonError(message, 500);
+    console.error("[analyze-food]", err);
+
+    if (err instanceof Error) {
+      const m = err.message.toLowerCase();
+      if (m.includes("401") || m.includes("invalid api key") || m.includes("api key")) {
+        return jsonError(
+          "Groq rejected the API key. Set GROQ_API_KEY in Vercel (server) and redeploy.",
+          502,
+          "GROQ_AUTH"
+        );
+      }
+    }
+
+    return apiErrorFromUnknown(err, "Failed to analyze food image.");
   }
 }
-

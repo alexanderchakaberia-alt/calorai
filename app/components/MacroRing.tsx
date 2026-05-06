@@ -124,7 +124,9 @@ function MetricRing({
 }
 
 export function MacroRing({ goals, totals }: { goals: DailyGoals; totals: MacroTotals }) {
+  const fiberGoal = goals.fiber_goal;
   return (
+    <div>
     <div className="grid grid-cols-2 gap-3 sm:gap-4">
       {RINGS.map((r) => {
         const value = totals[r.key] ?? 0;
@@ -148,6 +150,13 @@ export function MacroRing({ goals, totals }: { goals: DailyGoals; totals: MacroT
           />
         );
       })}
+    </div>
+    {fiberGoal !== undefined && Number.isFinite(fiberGoal) && fiberGoal > 0 ? (
+      <p className="mt-3 text-center text-sm text-slate-600">
+        Fiber goal: <span className="font-semibold text-slate-800">{Math.round(fiberGoal)} g</span>
+        <span className="text-slate-400"> — general wellness target (meals may not sum fiber)</span>
+      </p>
+    ) : null}
     </div>
   );
 }

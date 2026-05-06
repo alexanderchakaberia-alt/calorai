@@ -115,6 +115,7 @@ export default function Page() {
       </Show>
 
       <Show when="signed-in">
+        {/* Daily goals calculator (onboarding banner until first save) + tracker */}
         <CalorieTracker />
       </Show>
     </div>

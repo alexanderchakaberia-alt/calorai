@@ -1,6 +1,8 @@
 "use client";
 
 import CameraCapture from "@/components/CameraCapture";
+import GoalsCalculator from "@/components/GoalsCalculator";
+import { FoodLibrary } from "@/app/components/FoodLibrary";
 import { MacroRing } from "@/app/components/MacroRing";
 import { MealList } from "@/app/components/MealList";
 import type { DailyGoals, MacroTotals, MealEntry } from "@/lib/types";
@@ -23,6 +25,7 @@ export function CalorieTracker() {
   const [goals, setGoals] = useState<DailyGoals | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [libraryRefresh, setLibraryRefresh] = useState(0);
 
   const canQuery = isLoaded && !!userId;
 
@@ -67,6 +70,7 @@ export function CalorieTracker() {
       setMeals(mealsJson.meals ?? []);
       setTotals(mealsJson.totals ?? emptyTotals);
       setGoals(goalsJson.goals ?? null);
+      setLibraryRefresh((k) => k + 1);
     } catch (e) {
       setMeals([]);
       setTotals(emptyTotals);
@@ -105,6 +109,8 @@ export function CalorieTracker() {
 
   return (
     <div className="space-y-6">
+      <GoalsCalculator onSuccess={() => void loadDashboard()} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <label className="block text-sm font-medium text-slate-700">Date</label>
@@ -134,6 +140,12 @@ export function CalorieTracker() {
         <CameraCapture key={userId} onMealLogged={() => void loadDashboard()} />
         <MealList meals={meals} onDeleteMeal={deleteMeal} disabled={loading} />
       </div>
+
+      <FoodLibrary
+        userId={userId}
+        refreshKey={libraryRefresh}
+        onMealLogged={() => void loadDashboard()}
+      />
     </div>
   );
 }

@@ -1,10 +1,15 @@
+/**
+ * Meal APIs — `userId` comes from Clerk (`auth()`), e.g. `user_xxx` (string). Database columns are TEXT.
+ */
 import { NextResponse } from "next/server";
+import { apiErrorFromUnknown } from "@/lib/api-helpers";
 import { type ApiErrorResponse, type CreateMealRequest, type GetMealsResponse, type ISODateString } from "@/lib/types";
 import { addMealEntry, getDailyTotals, getMealsForDate } from "@/lib/db";
-import { getClerkAuth } from "@/lib/require-auth";
+import { requireUserId } from "@/lib/require-auth";
+import { isSupabaseConfigured, supabaseNotConfiguredResponse } from "@/lib/server-env";
 
-function jsonError(message: string, status = 400) {
-  return NextResponse.json<ApiErrorResponse>({ error: message }, { status });
+function jsonError(message: string, status = 400, code?: string) {
+  return NextResponse.json<ApiErrorResponse>({ error: message, ...(code ? { code } : {}) }, { status });
 }
 
 function isISODate(s: string): s is ISODateString {
@@ -13,13 +18,16 @@ function isISODate(s: string): s is ISODateString {
 
 export async function GET(req: Request) {
   try {
-    const { userId } = await getClerkAuth();
-    if (!userId) return NextResponse.json<ApiErrorResponse>({ error: "Unauthorized" }, { status: 401 });
+    if (!isSupabaseConfigured()) return supabaseNotConfiguredResponse();
+
+    const authResult = await requireUserId();
+    if (authResult instanceof NextResponse) return authResult;
+    const { userId } = authResult;
 
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date");
-    if (!date) return jsonError("Missing required query param: date (YYYY-MM-DD).", 400);
-    if (!isISODate(date)) return jsonError("Invalid date format. Expected YYYY-MM-DD.", 400);
+    if (!date) return jsonError("Missing required query param: date (YYYY-MM-DD).", 400, "BAD_REQUEST");
+    if (!isISODate(date)) return jsonError("Invalid date format. Expected YYYY-MM-DD.", 400, "BAD_REQUEST");
 
     const [meals, totals] = await Promise.all([
       getMealsForDate(userId, date),
@@ -27,18 +35,26 @@ export async function GET(req: Request) {
     ]);
     return NextResponse.json<GetMealsResponse>({ date, meals, totals });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to fetch meals.";
-    return jsonError(msg, 500);
+    return apiErrorFromUnknown(err, "Failed to fetch meals.");
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await getClerkAuth();
-    if (!userId) return jsonError("Unauthorized", 401);
+    if (!isSupabaseConfigured()) return supabaseNotConfiguredResponse();
 
-    const body = (await req.json()) as Partial<CreateMealRequest>;
-    if (!body || typeof body !== "object") return jsonError("Invalid JSON body.", 400);
+    const authResult = await requireUserId();
+    if (authResult instanceof NextResponse) return authResult;
+    const { userId } = authResult;
+
+    let body: Partial<CreateMealRequest>;
+    try {
+      body = (await req.json()) as Partial<CreateMealRequest>;
+    } catch {
+      return jsonError("Invalid JSON body.", 400, "BAD_REQUEST");
+    }
+
+    if (!body || typeof body !== "object") return jsonError("Invalid JSON body.", 400, "BAD_REQUEST");
 
     const date = body.date;
     if (!date || typeof date !== "string" || !isISODate(date)) return jsonError("Invalid or missing date.", 400);
@@ -69,7 +85,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ meal });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to add meal.";
-    return jsonError(msg, 500);
+    return apiErrorFromUnknown(err, "Failed to add meal.");
   }
 }
