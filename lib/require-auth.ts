@@ -2,7 +2,14 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 /**
- * App Router: uses Clerk's `auth()` (same session as `getAuth(req)` on Pages API).
+ * Clerk App Router session helper (replaces Pages Router `getAuth(req)`).
+ * Use `userId` from the return value for Supabase rows (`user_id` columns).
+ */
+export async function getClerkAuth() {
+  return auth();
+}
+
+/**
  * Returns the Clerk userId, or a 401 JSON response if unauthenticated.
  */
 export async function requireUserId(): Promise<{ userId: string } | NextResponse> {

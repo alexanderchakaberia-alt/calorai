@@ -1,6 +1,6 @@
 "use client";
 
-import CameraCapture from "@/components/CameraCapture";
+import { CalorieTracker } from "@/app/components/CalorieTracker";
 import { Show, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import React from "react";
 
@@ -115,7 +115,7 @@ export default function Page() {
       </Show>
 
       <Show when="signed-in">
-        <CameraCapture />
+        <CalorieTracker />
       </Show>
     </div>
   );

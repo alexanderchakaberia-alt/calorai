@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { type ApiErrorResponse, type CreateMealRequest, type GetMealsResponse, type ISODateString } from "@/lib/types";
 import { addMealEntry, getDailyTotals, getMealsForDate } from "@/lib/db";
-import { requireUserId } from "@/lib/require-auth";
+import { getClerkAuth } from "@/lib/require-auth";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json<ApiErrorResponse>({ error: message }, { status });
@@ -13,9 +13,8 @@ function isISODate(s: string): s is ISODateString {
 
 export async function GET(req: Request) {
   try {
-    const authResult = await requireUserId();
-    if (authResult instanceof NextResponse) return authResult;
-    const { userId } = authResult;
+    const { userId } = await getClerkAuth();
+    if (!userId) return NextResponse.json<ApiErrorResponse>({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date");
@@ -35,9 +34,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const authResult = await requireUserId();
-    if (authResult instanceof NextResponse) return authResult;
-    const { userId } = authResult;
+    const { userId } = await getClerkAuth();
+    if (!userId) return jsonError("Unauthorized", 401);
 
     const body = (await req.json()) as Partial<CreateMealRequest>;
     if (!body || typeof body !== "object") return jsonError("Invalid JSON body.", 400);

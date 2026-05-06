@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { type ApiErrorResponse, type GetGoalsResponse, type UpdateGoalsRequest } from "@/lib/types";
-import { getDailyGoals, upsertDailyGoals } from "@/lib/db";
+import { provisionClerkUser, upsertDailyGoals } from "@/lib/db";
 import { requireUserId } from "@/lib/require-auth";
 
 function jsonError(message: string, status = 400) {
@@ -13,7 +13,7 @@ export async function GET() {
     if (authResult instanceof NextResponse) return authResult;
     const { userId } = authResult;
 
-    const goals = await getDailyGoals(userId);
+    const goals = await provisionClerkUser(userId);
     return NextResponse.json<GetGoalsResponse>({ goals });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch goals.";

@@ -122,6 +122,7 @@ export default function CameraCapture({ onMealLogged }) {
 
       const res = await fetch("/api/analyze-food", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64 }),
       });
@@ -162,6 +163,7 @@ export default function CameraCapture({ onMealLogged }) {
 
       const res = await fetch("/api/meals", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(mealData),
       });

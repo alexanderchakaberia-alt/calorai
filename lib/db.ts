@@ -1,4 +1,4 @@
-import { getSupabase } from "./supabase";
+import { assertClerkUserId, getSupabaseForClerkUser } from "./supabase";
 import type { DailyGoals, ISODateString, MacroTotals, MealEntry } from "./types";
 
 const DEFAULTS = Object.freeze({
@@ -38,15 +38,30 @@ function mapGoals(row: Record<string, unknown>): DailyGoals {
   };
 }
 
+function nextCalendarDayUTC(date: ISODateString): ISODateString {
+  const d = new Date(`${date}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10) as ISODateString;
+}
+
 async function ensureUser(userId: string): Promise<void> {
-  const supabase = getSupabase();
+  assertClerkUserId(userId);
+  const supabase = getSupabaseForClerkUser(userId);
   await supabase
     .from("users")
     .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
 }
 
+/**
+ * Ensures `users` row and default `daily_goals` (2000 kcal, etc.) for a new Clerk user.
+ */
+export async function provisionClerkUser(userId: string): Promise<DailyGoals> {
+  return getDailyGoals(userId);
+}
+
 export async function getDailyGoals(userId: string): Promise<DailyGoals> {
-  const supabase = getSupabase();
+  assertClerkUserId(userId);
+  const supabase = getSupabaseForClerkUser(userId);
   await ensureUser(userId);
 
   const { data } = await supabase
@@ -71,7 +86,8 @@ export async function upsertDailyGoals(
   userId: string,
   goals: Partial<Pick<DailyGoals, "calorie_goal" | "protein_goal" | "fat_goal" | "carbs_goal">>
 ): Promise<DailyGoals> {
-  const supabase = getSupabase();
+  assertClerkUserId(userId);
+  const supabase = getSupabaseForClerkUser(userId);
   await ensureUser(userId);
 
   const existing = await getDailyGoals(userId);
@@ -94,13 +110,16 @@ export async function upsertDailyGoals(
 }
 
 export async function getMealsForDate(userId: string, date: ISODateString): Promise<MealEntry[]> {
-  const supabase = getSupabase();
+  assertClerkUserId(userId);
+  await ensureUser(userId);
+  const supabase = getSupabaseForClerkUser(userId);
+  const nextDay = nextCalendarDayUTC(date);
   const { data, error } = await supabase
     .from("meal_logs")
     .select("*")
     .eq("user_id", userId)
     .gte("logged_at", `${date}T00:00:00.000Z`)
-    .lt("logged_at", `${date}T24:00:00.000Z`)
+    .lt("logged_at", `${nextDay}T00:00:00.000Z`)
     .order("logged_at", { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -125,7 +144,8 @@ export async function addMealEntry(
   date: ISODateString,
   meal: Pick<MealEntry, "food_name" | "calories" | "protein" | "fat" | "carbs" | "portion">
 ): Promise<MealEntry> {
-  const supabase = getSupabase();
+  assertClerkUserId(userId);
+  const supabase = getSupabaseForClerkUser(userId);
   await ensureUser(userId);
 
   const { data, error } = await supabase
@@ -148,7 +168,8 @@ export async function addMealEntry(
 }
 
 export async function deleteMealEntry(mealId: string, userId: string): Promise<{ deleted: boolean }> {
-  const supabase = getSupabase();
+  assertClerkUserId(userId);
+  const supabase = getSupabaseForClerkUser(userId);
   const { error, count } = await supabase
     .from("meal_logs")
     .delete({ count: "exact" })
