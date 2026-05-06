@@ -3,12 +3,12 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 
 type AnalyzeResult = {
-  meal_name?: string;
+  food_name?: string;
   calories?: number;
   protein?: number;
   fat?: number;
   carbs?: number;
-  portion_size?: string;
+  portion?: string;
 };
 
 function fileToBase64(file: File): Promise<string> {

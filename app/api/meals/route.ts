@@ -17,8 +17,10 @@ export async function GET(req: Request) {
     if (!date) return jsonError("Missing required query param: date (YYYY-MM-DD).", 400);
     if (!isISODate(date)) return jsonError("Invalid date format. Expected YYYY-MM-DD.", 400);
 
-    const meals = getMealsForDate(DEMO_USER_ID, date);
-    const totals = getDailyTotals(DEMO_USER_ID, date);
+    const [meals, totals] = await Promise.all([
+      getMealsForDate(DEMO_USER_ID, date),
+      getDailyTotals(DEMO_USER_ID, date),
+    ]);
     return NextResponse.json<GetMealsResponse>({ date, meals, totals });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to fetch meals.";
@@ -34,8 +36,8 @@ export async function POST(req: Request) {
     const date = body.date;
     if (!date || typeof date !== "string" || !isISODate(date)) return jsonError("Invalid or missing date.", 400);
 
-    const meal_name = typeof body.meal_name === "string" ? body.meal_name.trim() : "";
-    if (!meal_name) return jsonError("Meal name is required.", 400);
+    const food_name = typeof body.food_name === "string" ? body.food_name.trim() : "";
+    if (!food_name) return jsonError("food_name is required.", 400);
 
     const calories = Number(body.calories);
     const protein = Number(body.protein ?? 0);
@@ -47,16 +49,15 @@ export async function POST(req: Request) {
     if (!Number.isFinite(fat) || fat < 0) return jsonError("Fat must be a non-negative number.", 400);
     if (!Number.isFinite(carbs) || carbs < 0) return jsonError("Carbs must be a non-negative number.", 400);
 
-    const portion_size =
-      typeof body.portion_size === "string" && body.portion_size.trim() ? body.portion_size.trim() : undefined;
+    const portion = typeof body.portion === "string" && body.portion.trim() ? body.portion.trim() : undefined;
 
-    const meal = addMealEntry(DEMO_USER_ID, date, {
-      meal_name,
+    const meal = await addMealEntry(DEMO_USER_ID, date, {
+      food_name,
       calories,
       protein,
       fat,
       carbs,
-      portion_size: portion_size ?? null,
+      portion: portion ?? null,
     });
 
     return NextResponse.json({ meal });
@@ -65,4 +66,3 @@ export async function POST(req: Request) {
     return jsonError(msg, 500);
   }
 }
-

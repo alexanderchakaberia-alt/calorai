@@ -11,7 +11,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     const { id } = await ctx.params;
     if (!id) return jsonError("Missing meal id.", 400);
 
-    const res = deleteMealEntry(id, DEMO_USER_ID);
+    const res = await deleteMealEntry(id, DEMO_USER_ID);
     if (!res.deleted) return jsonError("Meal not found (or already deleted).", 404);
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -19,4 +19,3 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     return jsonError(msg, 500);
   }
 }
-

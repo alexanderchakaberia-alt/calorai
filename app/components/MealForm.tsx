@@ -4,12 +4,12 @@ import React, { useMemo, useState } from "react";
 import { CameraInput } from "@/app/components/CameraInput";
 
 type MealFormValues = {
-  meal_name: string;
+  food_name: string;
   calories: string;
   protein: string;
   fat: string;
   carbs: string;
-  portion_size: string;
+  portion: string;
 };
 
 export function MealForm({
@@ -20,12 +20,12 @@ export function MealForm({
   onAnalyze,
 }: {
   onAddMeal: (meal: {
-    meal_name: string;
+    food_name: string;
     calories: number;
     protein: number;
     fat: number;
     carbs: number;
-    portion_size?: string;
+    portion?: string;
   }) => Promise<void>;
   disabled?: boolean;
   isAnalyzing?: boolean;
@@ -33,22 +33,22 @@ export function MealForm({
   onAnalyze?: (imageBase64: string) => Promise<
     | void
     | {
-        meal_name?: string;
+        food_name?: string;
         calories?: number;
         protein?: number;
         fat?: number;
         carbs?: number;
-        portion_size?: string;
+        portion?: string;
       }
   >;
 }) {
   const [values, setValues] = useState<MealFormValues>({
-    meal_name: "",
+    food_name: "",
     calories: "",
     protein: "",
     fat: "",
     carbs: "",
-    portion_size: "",
+    portion: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export function MealForm({
 
   const canSubmit = useMemo(() => {
     if (disabled || submitting || isAnalyzing) return false;
-    if (!values.meal_name.trim()) return false;
+    if (!values.food_name.trim()) return false;
     if (values.calories.trim() === "") return false;
     const cal = Number(values.calories);
     if (!Number.isFinite(cal) || cal < 0) return false;
@@ -73,13 +73,13 @@ export function MealForm({
     e.preventDefault();
     setError(null);
 
-    const meal_name = values.meal_name.trim();
+    const food_name = values.food_name.trim();
     const calories = Number(values.calories);
     const protein = values.protein.trim() === "" ? 0 : Number(values.protein);
     const fat = values.fat.trim() === "" ? 0 : Number(values.fat);
     const carbs = values.carbs.trim() === "" ? 0 : Number(values.carbs);
 
-    if (!meal_name) return setError("Meal name is required.");
+    if (!food_name) return setError("Meal name is required.");
     if (!Number.isFinite(calories) || calories < 0) return setError("Calories must be a non-negative number.");
     if (!Number.isFinite(protein) || protein < 0) return setError("Protein must be a non-negative number.");
     if (!Number.isFinite(fat) || fat < 0) return setError("Fat must be a non-negative number.");
@@ -88,20 +88,20 @@ export function MealForm({
     setSubmitting(true);
     try {
       await onAddMeal({
-        meal_name,
+        food_name,
         calories,
         protein,
         fat,
         carbs,
-        portion_size: values.portion_size.trim() ? values.portion_size.trim() : undefined,
+        portion: values.portion.trim() ? values.portion.trim() : undefined,
       });
       setValues({
-        meal_name: "",
+        food_name: "",
         calories: "",
         protein: "",
         fat: "",
         carbs: "",
-        portion_size: "",
+        portion: "",
       });
       setImageBase64(null);
       onImageSelected?.(null);
@@ -151,12 +151,12 @@ export function MealForm({
 
             setValues((v) => ({
               ...v,
-              meal_name: result.meal_name ?? v.meal_name,
+              food_name: result.food_name ?? v.food_name,
               calories: result.calories !== undefined ? String(result.calories) : v.calories,
               protein: result.protein !== undefined ? String(result.protein) : v.protein,
               fat: result.fat !== undefined ? String(result.fat) : v.fat,
               carbs: result.carbs !== undefined ? String(result.carbs) : v.carbs,
-              portion_size: result.portion_size ?? v.portion_size,
+              portion: result.portion ?? v.portion,
             }));
           }}
         />
@@ -172,8 +172,8 @@ export function MealForm({
         <div>
           <label className="block text-sm font-medium text-slate-700">Meal name</label>
           <input
-            value={values.meal_name}
-            onChange={(e) => setValues((v) => ({ ...v, meal_name: e.target.value }))}
+            value={values.food_name}
+            onChange={(e) => setValues((v) => ({ ...v, food_name: e.target.value }))}
             placeholder="e.g., Grilled Chicken Bowl"
             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-purple-300 focus:ring-4 focus:ring-purple-100"
             disabled={disabled || submitting}
@@ -232,8 +232,8 @@ export function MealForm({
         <div>
           <label className="block text-sm font-medium text-slate-700">Portion size (optional)</label>
           <input
-            value={values.portion_size}
-            onChange={(e) => setValues((v) => ({ ...v, portion_size: e.target.value }))}
+            value={values.portion}
+            onChange={(e) => setValues((v) => ({ ...v, portion: e.target.value }))}
             placeholder="e.g., 1 bowl, 250g, 2 slices"
             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-900 shadow-sm outline-none transition focus:border-slate-300 focus:ring-4 focus:ring-slate-100"
             disabled={disabled || submitting}

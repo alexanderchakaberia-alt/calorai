@@ -64,10 +64,10 @@ export function MealList({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <div className="truncate text-sm font-semibold text-slate-900">{m.meal_name}</div>
-                    {m.portion_size ? (
+                    <div className="truncate text-sm font-semibold text-slate-900">{m.food_name}</div>
+                    {m.portion ? (
                       <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                        {m.portion_size}
+                        {m.portion}
                       </span>
                     ) : null}
                   </div>

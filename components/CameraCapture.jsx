@@ -67,16 +67,36 @@ export default function CameraCapture({ onMealLogged }) {
       });
 
       streamRef.current = stream;
-      const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      await video.play();
       setCameraActive(true);
     } catch (e) {
-      setError(e?.message || "Failed to start camera.");
+      console.error("startCamera error:", e);
+      let message = e?.message || "Failed to start camera.";
+      if (e?.name === "NotAllowedError") {
+        message = "Camera permission denied. Please allow camera access in your browser settings.";
+      } else if (e?.name === "NotFoundError") {
+        message = "No camera found on this device.";
+      } else if (e?.name === "NotReadableError") {
+        message = "Camera is already in use by another application.";
+      }
+      setError(message);
       setCameraActive(false);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     }
   }
+
+  // Attach stream to video element after render (when cameraActive becomes true)
+  useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current) {
+      const video = videoRef.current;
+      video.srcObject = streamRef.current;
+      video.play().catch((err) => {
+        console.warn("Video play failed:", err);
+      });
+    }
+  }, [cameraActive]);
 
   async function capturePhoto() {
     setError(null);
@@ -132,7 +152,8 @@ export default function CameraCapture({ onMealLogged }) {
       const todayISO = new Date().toISOString().split("T")[0];
       const mealData = {
         date: todayISO,
-        name: food.food_name,
+        food_name: food.food_name,
+        portion: food.portion || null,
         calories: Number(food.calories) || 0,
         protein: Number(food.protein) || 0,
         fat: Number(food.fat) || 0,
@@ -285,7 +306,7 @@ export default function CameraCapture({ onMealLogged }) {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? "Analyzing..." : "Capture & Analyze"}
+              {loading ? "Analyzing..." : "Next"}
             </button>
 
             <canvas ref={canvasRef} style={{ display: "none" }} />

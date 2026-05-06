@@ -51,7 +51,7 @@ export default function Page() {
     setLoading(true);
     try {
       const [g, m] = await Promise.all([
-        fetchJson<GetGoalsResponse>(`/api/goals?date=${encodeURIComponent(date)}`),
+        fetchJson<GetGoalsResponse>(`/api/goals`),
         fetchJson<GetMealsResponse>(`/api/meals?date=${encodeURIComponent(date)}`),
       ]);
       setGoals(g.goals);
@@ -72,7 +72,7 @@ export default function Page() {
       setMeals(m.meals);
       setTotals(m.totals);
       if (!goals) {
-        const g = await fetchJson<GetGoalsResponse>(`/api/goals?date=${encodeURIComponent(date)}`);
+        const g = await fetchJson<GetGoalsResponse>(`/api/goals`);
         setGoals(g.goals);
       }
     } catch (err) {
@@ -154,7 +154,7 @@ export default function Page() {
         </div>
 
         <footer className="mt-8 text-center text-xs text-slate-500">
-          Data is stored locally in SQLite (<span className="font-medium text-slate-600">db.sqlite</span>).
+          Data is stored in <span className="font-medium text-slate-600">Supabase</span>.
         </footer>
       </div>
     </main>
