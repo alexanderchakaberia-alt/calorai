@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { getSupabase } from "./supabase";
 import type { DailyGoals, ISODateString, MacroTotals, MealEntry } from "./types";
 
 const DEFAULTS = Object.freeze({
@@ -39,12 +39,14 @@ function mapGoals(row: Record<string, unknown>): DailyGoals {
 }
 
 async function ensureUser(userId: string): Promise<void> {
+  const supabase = getSupabase();
   await supabase
     .from("users")
     .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
 }
 
 export async function getDailyGoals(userId: string): Promise<DailyGoals> {
+  const supabase = getSupabase();
   await ensureUser(userId);
 
   const { data } = await supabase
@@ -69,6 +71,7 @@ export async function upsertDailyGoals(
   userId: string,
   goals: Partial<Pick<DailyGoals, "calorie_goal" | "protein_goal" | "fat_goal" | "carbs_goal">>
 ): Promise<DailyGoals> {
+  const supabase = getSupabase();
   await ensureUser(userId);
 
   const existing = await getDailyGoals(userId);
@@ -91,6 +94,7 @@ export async function upsertDailyGoals(
 }
 
 export async function getMealsForDate(userId: string, date: ISODateString): Promise<MealEntry[]> {
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from("meal_logs")
     .select("*")
@@ -121,6 +125,7 @@ export async function addMealEntry(
   date: ISODateString,
   meal: Pick<MealEntry, "food_name" | "calories" | "protein" | "fat" | "carbs" | "portion">
 ): Promise<MealEntry> {
+  const supabase = getSupabase();
   await ensureUser(userId);
 
   const { data, error } = await supabase
@@ -143,6 +148,7 @@ export async function addMealEntry(
 }
 
 export async function deleteMealEntry(mealId: string, userId: string): Promise<{ deleted: boolean }> {
+  const supabase = getSupabase();
   const { error, count } = await supabase
     .from("meal_logs")
     .delete({ count: "exact" })
