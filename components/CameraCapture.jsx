@@ -442,9 +442,9 @@ export default function CameraCapture({
   const totals = useMemo(() => sumTotals(items), [items]);
 
   return (
-    <div className="w-full max-w-xl mx-auto px-1 sm:px-2">
+    <div className="w-full max-w-xl mx-auto">
       {analysisError && step !== "camera" && step !== "analyzing" ? (
-        <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-800 ring-1 ring-red-200">
+        <div className="mb-3 rounded-xl border border-black/[0.08] bg-calorai-bg px-3 py-2.5 text-sm text-[#636366] shadow-sm">
           {analysisError}
           {step === "error" && capturedImage ? (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -462,7 +462,7 @@ export default function CameraCapture({
                     }
                   })();
                 }}
-                className="rounded-lg bg-red-900 px-3 py-1.5 text-xs font-semibold text-white"
+                className="rounded-lg bg-calorai-primary px-3 py-1.5 text-xs font-semibold text-white"
               >
                 Retry
               </button>
@@ -472,12 +472,12 @@ export default function CameraCapture({
       ) : null}
 
       {step === "success" && successInfo ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-8 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-3xl text-white shadow-lg">
+        <div className="rounded-2xl border border-calorai-success/25 bg-calorai-success/10 px-4 py-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-calorai-success text-3xl text-white shadow-lg">
             ✓
           </div>
-          <p className="mt-4 text-lg font-bold text-emerald-900">Meal logged</p>
-          <p className="mt-2 text-sm text-emerald-800">
+          <p className="mt-4 text-lg font-bold text-[#1C1C1E]">Meal logged</p>
+          <p className="mt-2 text-sm text-[#636366]">
             {successInfo.addedCals.toLocaleString()} cal added — you&apos;re at{" "}
             <span className="font-bold">{successInfo.newDay.toLocaleString()}</span> / {successInfo.goal.toLocaleString()}{" "}
             for today
@@ -513,7 +513,7 @@ export default function CameraCapture({
           <button
             type="button"
             onClick={capturePhoto}
-            className="mt-3 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-violet-700"
+            className="mt-3 w-full min-h-[48px] rounded-xl bg-calorai-primary px-4 py-3.5 text-sm font-bold text-white shadow-card transition hover:opacity-95 active:scale-[0.99]"
           >
             Capture &amp; analyze
           </button>
@@ -550,7 +550,7 @@ export default function CameraCapture({
             </div>
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
               <div
-                className="h-full rounded-full bg-violet-600 transition-all"
+                className="h-full rounded-full bg-calorai-primary transition-all"
                 style={{ width: `${Math.min(100, overall)}%` }}
               />
             </div>
@@ -562,7 +562,7 @@ export default function CameraCapture({
             </div>
           ) : null}
           {overall >= 80 && items.length > 0 ? (
-            <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 ring-1 ring-emerald-200">
+            <div className="rounded-xl border border-calorai-success/30 bg-calorai-success/10 px-3 py-2 text-sm font-medium text-[#1C1C1E]">
               ✓ Analysis looks good!
             </div>
           ) : null}
@@ -594,7 +594,7 @@ export default function CameraCapture({
             <button
               type="button"
               onClick={() => setAddOpen((v) => !v)}
-              className="text-sm font-semibold text-violet-700 hover:text-violet-900"
+              className="text-sm font-semibold text-calorai-primary hover:opacity-80"
             >
               + Add another item
             </button>
@@ -618,7 +618,7 @@ export default function CameraCapture({
                           key={f.id}
                           type="button"
                           onClick={() => addFromLibrary(f)}
-                          className="flex w-full justify-between rounded-lg px-2 py-1.5 text-left text-xs hover:bg-violet-50"
+                          className="flex w-full justify-between rounded-lg px-2 py-1.5 text-left text-xs hover:bg-calorai-primary/5"
                         >
                           <span className="font-medium text-slate-800">{f.food_name}</span>
                           <span className="text-slate-500">{Math.round(f.calories)} kcal</span>
@@ -712,7 +712,7 @@ export default function CameraCapture({
               type="button"
               disabled={logging}
               onClick={confirmLog}
-              className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50"
+              className="flex-1 min-h-[48px] rounded-xl bg-calorai-primary px-4 py-3 text-sm font-bold text-white shadow-card transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
             >
               {logging ? "Logging…" : "Confirm & log meal"}
             </button>
@@ -756,7 +756,7 @@ export default function CameraCapture({
                 }
               })();
             }}
-            className="w-full rounded-xl bg-violet-600 py-3 text-sm font-bold text-white"
+            className="w-full min-h-[48px] rounded-xl bg-calorai-primary py-3 text-sm font-bold text-white shadow-card"
           >
             Retry analysis
           </button>

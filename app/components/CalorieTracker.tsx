@@ -15,7 +15,26 @@ function todayISO() {
 
 const emptyTotals: MacroTotals = { calories: 0, protein: 0, fat: 0, carbs: 0 };
 
-export function CalorieTracker({ displayName }: { displayName: string }) {
+function SetGoalsPrompt({ onOpen, busy }: { onOpen: () => void; busy: boolean }) {
+  return (
+    <div className="calorai-enter rounded-2xl border border-dashed border-calorai-primary/35 bg-white p-8 text-center shadow-card">
+      <p className="text-lg font-bold text-[#1C1C1E]">Set your daily goals</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#636366]">
+        Add calorie and macro targets so your progress rings stay accurate.
+      </p>
+      <button
+        type="button"
+        onClick={onOpen}
+        disabled={busy}
+        className="mt-6 rounded-xl bg-calorai-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+      >
+        Set goals
+      </button>
+    </div>
+  );
+}
+
+export function CalorieTracker() {
   const { user, isLoaded } = useUser();
   const userId = user?.id ?? null;
 
@@ -23,7 +42,6 @@ export function CalorieTracker({ displayName }: { displayName: string }) {
   const [meals, setMeals] = useState<MealEntry[]>([]);
   const [totals, setTotals] = useState<MacroTotals>(emptyTotals);
   const [goals, setGoals] = useState<DailyGoals | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [libraryRefresh, setLibraryRefresh] = useState(0);
   const [goalsModalOpen, setGoalsModalOpen] = useState(false);
@@ -45,39 +63,29 @@ export function CalorieTracker({ displayName }: { displayName: string }) {
       setMeals([]);
       setTotals(emptyTotals);
       setGoals(null);
-      setLoadError(null);
       return;
     }
 
     setLoading(true);
-    setLoadError(null);
     try {
       const [mealsRes, goalsRes] = await Promise.all([
         fetch(`/api/meals?date=${encodeURIComponent(date)}`, fetchOpts),
         fetch("/api/goals", fetchOpts),
       ]);
 
-      if (!mealsRes.ok) {
-        const j = (await mealsRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j?.error || "Could not load meals.");
-      }
-      if (!goalsRes.ok) {
-        const j = (await goalsRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(j?.error || "Could not load goals.");
+      if (mealsRes.ok) {
+        const mealsJson = (await mealsRes.json()) as { meals?: MealEntry[]; totals?: MacroTotals };
+        setMeals(mealsJson.meals ?? []);
+        setTotals(mealsJson.totals ?? emptyTotals);
+        setLibraryRefresh((k) => k + 1);
       }
 
-      const mealsJson = (await mealsRes.json()) as { meals?: MealEntry[]; totals?: MacroTotals };
-      const goalsJson = (await goalsRes.json()) as { goals?: DailyGoals };
-
-      setMeals(mealsJson.meals ?? []);
-      setTotals(mealsJson.totals ?? emptyTotals);
-      setGoals(goalsJson.goals ?? null);
-      setLibraryRefresh((k) => k + 1);
-    } catch (e) {
-      setMeals([]);
-      setTotals(emptyTotals);
-      setGoals(null);
-      setLoadError(e instanceof Error ? e.message : "Failed to load dashboard.");
+      if (goalsRes.ok) {
+        const goalsJson = (await goalsRes.json()) as { goals?: DailyGoals };
+        setGoals(goalsJson.goals ?? null);
+      }
+    } catch {
+      /* offline / network: leave existing dashboard state */
     } finally {
       setLoading(false);
     }
@@ -98,7 +106,7 @@ export function CalorieTracker({ displayName }: { displayName: string }) {
         setGoalsModalOpen(true);
       }
     } catch {
-      /* private mode / no storage */
+      /* private mode */
     }
   }, [hydrated, canQuery]);
 
@@ -107,16 +115,14 @@ export function CalorieTracker({ displayName }: { displayName: string }) {
       method: "DELETE",
       credentials: "include",
     });
-    const j = (await res.json().catch(() => ({}))) as { error?: string };
-    if (!res.ok) throw new Error(j?.error || "Delete failed.");
-    await loadDashboard();
+    if (res.ok) await loadDashboard();
   }
 
   if (!isLoaded) {
     return (
-      <p className="px-4 py-12 text-center text-sm text-slate-500" aria-live="polite">
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-[#636366]" aria-live="polite">
         Loading…
-      </p>
+      </div>
     );
   }
 
@@ -125,122 +131,119 @@ export function CalorieTracker({ displayName }: { displayName: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-12 pt-4 sm:px-6">
-      <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-slate-200 pb-5">
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Calorie Tracker</h1>
-          <p className="mt-0.5 truncate text-sm text-slate-600">{displayName}</p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={() => setGoalsModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
-            aria-label="Set daily goals"
-          >
-            <svg className="h-5 w-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="hidden sm:inline">Set goals</span>
-          </button>
-          <UserButton />
-          <SignOutButton>
-            <button
-              type="button"
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              Sign out
-            </button>
-          </SignOutButton>
+    <div className="min-h-screen bg-calorai-bg">
+      <header className="sticky top-0 z-40 border-b border-black/[0.06] bg-calorai-bg/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
+          <span className="text-xl font-bold tracking-tight text-[#1C1C1E]">CalorAI</span>
+          <div className="flex items-center gap-2">
+            <UserButton />
+            <SignOutButton>
+              <button
+                type="button"
+                className="rounded-full border border-black/[0.08] bg-white px-4 py-2 text-sm font-semibold text-[#1C1C1E] shadow-sm transition hover:bg-calorai-bg active:scale-95"
+              >
+                Sign out
+              </button>
+            </SignOutButton>
+          </div>
         </div>
       </header>
 
-      {goalsModalOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4 sm:items-center sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="goals-dialog-title"
-          onClick={() => setGoalsModalOpen(false)}
-        >
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6">
+        <div className="calorai-enter mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <label htmlFor="tracker-date" className="block text-xs font-semibold uppercase tracking-wide text-[#636366]">
+              Date
+            </label>
+            <input
+              id="tracker-date"
+              type="date"
+              value={date}
+              max={todayISO()}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-1.5 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-[#1C1C1E] shadow-sm outline-none ring-calorai-primary transition focus:ring-2 focus:ring-calorai-primary/30"
+            />
+          </div>
+          {loading ? (
+            <span className="text-sm text-[#636366]" aria-live="polite">
+              Syncing…
+            </span>
+          ) : null}
+        </div>
+
+        {goalsModalOpen ? (
           <div
-            className="my-4 w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 sm:my-8 sm:max-h-[min(90vh,880px)] sm:overflow-y-auto sm:p-6"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="goals-dialog-title"
+            onClick={() => setGoalsModalOpen(false)}
           >
-            <GoalsCalculator
-              isModal
-              onDismiss={() => setGoalsModalOpen(false)}
-              onSuccess={() => {
-                setGoalsModalOpen(false);
-                void loadDashboard();
-              }}
+            <div
+              className="my-4 w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl sm:my-8 sm:max-h-[min(90vh,880px)] sm:overflow-y-auto sm:p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GoalsCalculator
+                isModal
+                onDismiss={() => setGoalsModalOpen(false)}
+                onSuccess={() => {
+                  setGoalsModalOpen(false);
+                  void loadDashboard();
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+          <div className="flex flex-col gap-6">
+            {goals ? (
+              <MacroRing goals={goals} totals={totals} onSetGoals={() => setGoalsModalOpen(true)} />
+            ) : (
+              <SetGoalsPrompt onOpen={() => setGoalsModalOpen(true)} busy={loading} />
+            )}
+
+            <section className="calorai-enter calorai-enter-delay-1 overflow-hidden rounded-2xl bg-white shadow-card">
+              <div className="flex items-center gap-4 border-b border-black/[0.06] p-4 sm:p-5">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-calorai-primary/12">
+                  <svg className="h-7 w-7 text-calorai-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-[#1C1C1E]">Food recognition</h2>
+                  <p className="mt-0.5 text-sm text-[#636366]">Scan your meal</p>
+                </div>
+              </div>
+              <div className="min-h-[200px] p-2 sm:p-4">
+                <CameraCapture
+                  key={userId}
+                  logDate={date}
+                  calorieGoal={goals?.calorie_goal ?? 2000}
+                  dayCaloriesBeforeMeal={totals.calories}
+                  onMealLogged={() => void loadDashboard()}
+                />
+              </div>
+            </section>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <MealList meals={meals} onDeleteMeal={deleteMeal} disabled={loading} />
+            <FoodLibrary
+              userId={userId}
+              refreshKey={libraryRefresh}
+              logDate={date}
+              onMealLogged={() => void loadDashboard()}
             />
           </div>
         </div>
-      ) : null}
-
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <label htmlFor="tracker-date" className="block text-sm font-medium text-slate-700">
-            Date
-          </label>
-          <input
-            id="tracker-date"
-            type="date"
-            value={date}
-            max={todayISO()}
-            onChange={(e) => setDate(e.target.value)}
-            className="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 shadow-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30"
-          />
-        </div>
-        {loading ? (
-          <div className="text-sm text-slate-500" aria-live="polite">
-            Syncing…
-          </div>
-        ) : null}
-      </div>
-
-      {loadError ? (
-        <div className="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800 ring-1 ring-red-200" role="alert">
-          {loadError}
-        </div>
-      ) : null}
-
-      {goals ? (
-        <section className="mb-8 rounded-2xl bg-slate-100/80 p-4 ring-1 ring-slate-200/60 sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-slate-900">Daily progress</h2>
-          <MacroRing goals={goals} totals={totals} />
-        </section>
-      ) : !loadError ? (
-        <p className="mb-6 text-sm text-slate-600">Loading your targets…</p>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <section className="rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200/80">
-          <h2 className="mb-3 px-3 pt-3 text-sm font-semibold text-slate-800">Food recognition</h2>
-          <CameraCapture
-            key={userId}
-            logDate={date}
-            calorieGoal={goals?.calorie_goal ?? 2000}
-            dayCaloriesBeforeMeal={totals.calories}
-            onMealLogged={() => void loadDashboard()}
-          />
-        </section>
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-800">Today&apos;s meals</h2>
-          <MealList meals={meals} onDeleteMeal={deleteMeal} disabled={loading} />
-        </section>
-      </div>
-
-      <div className="mt-8">
-        <FoodLibrary userId={userId} refreshKey={libraryRefresh} onMealLogged={() => void loadDashboard()} />
-      </div>
+      </main>
     </div>
   );
 }

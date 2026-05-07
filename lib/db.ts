@@ -265,18 +265,14 @@ export async function getPastFoodsForUser(userId: string): Promise<PastFoodEntry
   await ensureUser(userId);
   const supabase = getSupabaseForClerkUser(userId);
 
-  const { data, error } = await supabase.from("past_foods").select("*").eq("user_id", userId);
+  const { data, error } = await supabase
+    .from("past_foods")
+    .select("*")
+    .eq("user_id", userId)
+    .order("last_used_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  const rows = (data ?? []).map(mapPastFood);
-  rows.sort((a, b) => {
-    if (a.favorited !== b.favorited) return a.favorited ? -1 : 1;
-    const ta = new Date(a.last_used_at).getTime();
-    const tb = new Date(b.last_used_at).getTime();
-    if (tb !== ta) return tb - ta;
-    return b.use_count - a.use_count;
-  });
-  return rows;
+  return (data ?? []).map(mapPastFood);
 }
 
 export async function setPastFoodFavorite(userId: string, pastFoodId: string, favorited: boolean): Promise<PastFoodEntry> {
