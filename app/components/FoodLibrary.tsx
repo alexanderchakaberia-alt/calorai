@@ -637,10 +637,10 @@ export function FoodLibrary({
   }
 
   return (
-    <section className="relative calorai-enter calorai-enter-delay-2 flex max-h-[400px] flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-card sm:p-5">
+    <section className="relative calorai-enter calorai-enter-delay-2 flex flex-col overflow-hidden rounded-[var(--calorai-radius-card)] border border-[var(--calorai-border)] bg-white p-5 shadow-[var(--calorai-shadow-sm)] md:min-h-0 md:flex-1">
       {toast ? (
         <div
-          className="calorai-enter fixed bottom-6 left-1/2 z-[60] max-w-sm -translate-x-1/2 rounded-2xl border border-calorai-success/25 bg-[#1C1C1E] px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
+          className="cal-cal-toast-enter fixed bottom-6 left-1/2 z-[60] max-w-sm -translate-x-1/2 rounded-[var(--calorai-radius-card)] bg-[var(--calorai-text)] px-4 py-3 text-center text-sm font-medium text-white shadow-[var(--calorai-shadow-lg)]"
           role="status"
         >
           {toast}
@@ -648,8 +648,10 @@ export function FoodLibrary({
       ) : null}
 
       <div className="mb-3">
-        <h2 className="text-base font-bold text-[#1C1C1E]">Food library</h2>
-        <p className="mt-0.5 text-sm text-[#636366]">Pick a food → adjust portion → add to the selected date</p>
+        <h2 className="text-base font-bold text-[var(--calorai-text)]">Food library</h2>
+        <p className="mt-0.5 text-sm text-[var(--calorai-text-secondary)]">
+          Pick a food, adjust portions, add to your selected date.
+        </p>
       </div>
 
       <div className="mb-3 flex gap-2 overflow-x-auto whitespace-nowrap pb-1 [-webkit-overflow-scrolling:touch]">
@@ -676,17 +678,19 @@ export function FoodLibrary({
           placeholder="Search foods… (top 10)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-xl border border-black/[0.06] bg-calorai-bg py-3 pl-11 pr-4 text-sm text-[#1C1C1E] placeholder:text-[#C7C7CC] outline-none ring-calorai-primary transition focus:bg-white focus:ring-2 focus:ring-calorai-primary/30"
+          className="cal-input w-full py-3 pl-11 pr-4 text-sm focus:bg-white"
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="food-items-grid min-h-0 flex-1 overflow-visible pr-1 md:overflow-y-auto">
         {loading ? (
           <p className="py-6 text-center text-sm text-[#636366]">Loading history…</p>
         ) : showNoResults ? (
-          <div className="rounded-xl border border-dashed border-black/[0.1] bg-calorai-bg py-10 text-center">
-            <p className="text-sm font-semibold text-[#1C1C1E]">No results</p>
-            <p className="mt-1 text-sm text-[#636366]">Try a different search.</p>
+          <div className="rounded-xl border border-dashed border-[var(--calorai-border)] bg-calorai-bg px-6 py-10 text-center">
+            <p className="text-sm font-semibold text-[var(--calorai-text)]">🔍 Nothing found</p>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--calorai-text-secondary)]">
+              Try different keywords or add food manually.
+            </p>
           </div>
         ) : query.trim() ? (
           <div className="space-y-7">
@@ -750,7 +754,7 @@ export function FoodLibrary({
                 setManualVals((v) => ({ ...v, name: query.trim() }));
                 setManualOpen(true);
               }}
-              className="rounded-2xl border border-black/[0.08] bg-white px-5 py-3 text-sm font-semibold text-[#1C1C1E] shadow-sm transition hover:bg-calorai-bg active:scale-[0.99]"
+              className="btn-secondary rounded-[var(--calorai-radius-btn)] px-6 py-3 text-sm"
             >
               Can't find it? Add manually
             </button>
@@ -759,7 +763,12 @@ export function FoodLibrary({
         ) : activeTab === "favorites" ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {tabFavoritesModels.length === 0 ? (
-            <p className="py-6 text-sm text-[#636366]">Star foods to pin them here.</p>
+            <div className="col-span-full rounded-xl border border-dashed border-[var(--calorai-border)] bg-calorai-bg px-6 py-10 text-center">
+              <p className="text-sm font-semibold text-[var(--calorai-text)]">⭐ No favorites yet</p>
+              <p className="mt-1 text-sm leading-relaxed text-[var(--calorai-text-secondary)]">
+                Star foods from the library for quick-log later.
+              </p>
+            </div>
           ) : (
             tabFavoritesModels.map((m) => (
               <LibraryFoodCard
@@ -820,22 +829,25 @@ export function FoodLibrary({
 
       {manualOpen ? (
         <div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/35 p-3 sm:items-center sm:p-6"
+          className="fixed inset-0 z-[70] flex animate-[calorai-modal-fadeIn_0.3s_ease-in-out_both] items-end justify-center bg-black/50 p-3 sm:items-center sm:p-6"
           role="dialog"
           aria-modal="true"
           onClick={() => setManualOpen(false)}
         >
-          <div className="w-full max-w-lg rounded-3xl bg-white p-4 shadow-2xl sm:p-6" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="w-full max-w-lg rounded-[var(--calorai-radius-modal)] bg-white p-5 shadow-[var(--calorai-shadow-lg)] animate-[calorai-modal-scaleIn_0.3s_ease-out_both] sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#636366]">Manual add</p>
-              <h3 className="mt-1 text-lg font-bold text-[#1C1C1E]">Add a food manually</h3>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--calorai-text-secondary)]">Manual add</p>
+              <h3 className="mt-1 text-lg font-bold text-[var(--calorai-text)]">Add a food manually</h3>
             </div>
             <div className="grid gap-3">
               <Field label="Food name">
                 <input
                   value={manualVals.name}
                   onChange={(e) => setManualVals((v) => ({ ...v, name: e.target.value }))}
-                  className="w-full rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm text-[#1C1C1E] shadow-sm outline-none ring-calorai-primary focus:ring-2 focus:ring-calorai-primary/30"
+                  className="cal-input w-full text-sm"
                 />
               </Field>
               <div className="grid grid-cols-2 gap-3">
@@ -847,18 +859,10 @@ export function FoodLibrary({
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={() => setManualOpen(false)}
-                className="min-h-[48px] rounded-2xl border border-black/[0.08] bg-white px-5 py-3 text-sm font-semibold text-[#1C1C1E] shadow-sm transition hover:bg-calorai-bg active:scale-[0.99]"
-              >
+              <button type="button" onClick={() => setManualOpen(false)} className="btn-secondary min-h-[48px] w-full sm:w-auto">
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={() => void addManual()}
-                className="min-h-[48px] rounded-2xl bg-calorai-primary px-6 py-3 text-sm font-semibold text-white shadow-card transition hover:opacity-95 active:scale-[0.99]"
-              >
+              <button type="button" onClick={() => void addManual()} className="btn-primary min-h-[48px] w-full sm:w-auto">
                 Add to log
               </button>
             </div>
@@ -872,7 +876,7 @@ export function FoodLibrary({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-1">
-      <span className="text-xs font-semibold uppercase tracking-wide text-[#636366]">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-[var(--calorai-text-secondary)]">{label}</span>
       {children}
     </label>
   );
@@ -885,7 +889,7 @@ function NumField({ label, value, onChange }: { label: string; value: string; on
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm text-[#1C1C1E] shadow-sm outline-none ring-calorai-primary focus:ring-2 focus:ring-calorai-primary/30"
+        className="cal-input w-full text-sm tabular-nums"
       />
     </Field>
   );

@@ -17,17 +17,12 @@ const emptyTotals: MacroTotals = { calories: 0, protein: 0, fat: 0, carbs: 0 };
 
 function SetGoalsPrompt({ onOpen, busy }: { onOpen: () => void; busy: boolean }) {
   return (
-    <div className="calorai-enter rounded-2xl border border-dashed border-calorai-primary/35 bg-white p-8 text-center shadow-card">
-      <p className="text-lg font-bold text-[#1C1C1E]">Set your daily goals</p>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#636366]">
+    <div className="calorai-enter rounded-[var(--calorai-radius-card)] border border-dashed border-calorai-primary/35 bg-white p-8 text-center shadow-[var(--calorai-shadow-sm)]">
+      <p className="text-lg font-bold text-[var(--calorai-text)]">Set your daily goals</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[var(--calorai-text-secondary)]">
         Add calorie and macro targets so your progress rings stay accurate.
       </p>
-      <button
-        type="button"
-        onClick={onOpen}
-        disabled={busy}
-        className="mt-6 rounded-xl bg-calorai-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-      >
+      <button type="button" onClick={onOpen} disabled={busy} className="btn-primary mt-6 text-sm">
         Set goals
       </button>
     </div>
@@ -131,16 +126,20 @@ export function CalorieTracker() {
   }
 
   return (
-    <div className="min-h-screen bg-calorai-bg">
-      <header className="sticky top-0 z-40 border-b border-black/[0.06] bg-calorai-bg/90 backdrop-blur-md">
+    <div className="min-h-screen bg-calorai-bg md:flex md:h-screen md:flex-col md:overflow-hidden">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-br from-[#007AFF] to-[#0051D5] text-white shadow-[var(--calorai-shadow-md)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
-          <span className="text-xl font-bold tracking-tight text-[#1C1C1E]">CalorAI</span>
-          <div className="flex items-center gap-2">
-            <UserButton />
+          <span className="text-xl font-bold tracking-tight">CalorAI</span>
+          <div className="flex items-center gap-2 [&_.cl-userButton-trigger]:rounded-full [&_.cl-userButton-trigger]:ring-2 [&_.cl-userButton-trigger]:ring-white/30">
+            <UserButton
+              appearance={{
+                elements: { userButtonPopoverCard: "border border-black/[0.08] shadow-[var(--calorai-shadow-lg)]", avatarBox: "h-10 w-10" },
+              }}
+            />
             <SignOutButton>
               <button
                 type="button"
-                className="rounded-full border border-black/[0.08] bg-white px-4 py-2 text-sm font-semibold text-[#1C1C1E] shadow-sm transition hover:bg-calorai-bg active:scale-95"
+                className="btn-secondary rounded-[var(--calorai-radius-btn)] border border-white/55 bg-white/15 px-4 py-2 text-sm font-semibold text-white shadow-none backdrop-blur-sm hover:border-white hover:bg-white/25 hover:!scale-[1.02] hover:!shadow-sm active:!scale-[0.98]"
               >
                 Sign out
               </button>
@@ -149,10 +148,10 @@ export function CalorieTracker() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6">
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 md:flex-1 md:overflow-hidden md:pb-6">
         <div className="calorai-enter mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <label htmlFor="tracker-date" className="block text-xs font-semibold uppercase tracking-wide text-[#636366]">
+            <label htmlFor="tracker-date" className="block text-xs font-semibold uppercase tracking-wide text-[var(--calorai-text-secondary)]">
               Date
             </label>
             <input
@@ -161,11 +160,11 @@ export function CalorieTracker() {
               value={date}
               max={todayISO()}
               onChange={(e) => setDate(e.target.value)}
-              className="mt-1.5 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-[#1C1C1E] shadow-sm outline-none ring-calorai-primary transition focus:ring-2 focus:ring-calorai-primary/30"
+              className="cal-input mt-1.5 w-full max-w-[220px]"
             />
           </div>
           {loading ? (
-            <span className="text-sm text-[#636366]" aria-live="polite">
+            <span className="text-sm text-[var(--calorai-text-secondary)]" aria-live="polite">
               Syncing…
             </span>
           ) : null}
@@ -173,14 +172,14 @@ export function CalorieTracker() {
 
         {goalsModalOpen ? (
           <div
-            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center sm:p-6"
+            className="fixed inset-0 z-50 flex animate-[calorai-modal-fadeIn_0.3s_ease-in-out_both] items-start justify-center overflow-y-auto bg-black/50 p-4 sm:items-center sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="goals-dialog-title"
             onClick={() => setGoalsModalOpen(false)}
           >
             <div
-              className="my-4 w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl sm:my-8 sm:max-h-[min(90vh,880px)] sm:overflow-y-auto sm:p-6"
+              className="my-4 w-full max-w-2xl rounded-[var(--calorai-radius-modal)] bg-white p-5 shadow-[var(--calorai-shadow-lg)] animate-[calorai-modal-scaleIn_0.3s_ease-out_both] sm:my-8 sm:max-h-[min(90vh,880px)] sm:overflow-y-auto sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <GoalsCalculator
@@ -195,17 +194,17 @@ export function CalorieTracker() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-4 md:gap-6 lg:grid lg:grid-cols-2 lg:items-stretch lg:gap-4">
-          <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 md:flex-1 md:gap-6 md:overflow-hidden md:grid md:grid-cols-2 md:items-stretch md:gap-6">
+          <div className="flex flex-col gap-6 md:overflow-hidden">
             {goals ? (
               <MacroRing goals={goals} totals={totals} onSetGoals={() => setGoalsModalOpen(true)} />
             ) : (
               <SetGoalsPrompt onOpen={() => setGoalsModalOpen(true)} busy={loading} />
             )}
 
-            <section className="calorai-enter calorai-enter-delay-1 overflow-hidden rounded-2xl bg-white shadow-card">
-              <div className="flex items-center gap-4 border-b border-black/[0.06] p-4 sm:p-5">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-calorai-primary/12">
+            <section className="calorai-enter calorai-enter-delay-1 overflow-hidden rounded-[var(--calorai-radius-card)] border border-[var(--calorai-border)] bg-white shadow-[var(--calorai-shadow-sm)]">
+              <div className="flex items-center gap-4 border-b border-[var(--calorai-border)] p-4 sm:p-5">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--calorai-radius-card)] bg-calorai-primary/12">
                   <svg className="h-7 w-7 text-calorai-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
                     <path
                       strokeLinecap="round"
@@ -217,8 +216,8 @@ export function CalorieTracker() {
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-[#1C1C1E]">Food recognition</h2>
-                  <p className="mt-0.5 text-sm text-[#636366]">Scan your meal</p>
+                  <h2 className="text-base font-bold text-[var(--calorai-text)]">Food recognition</h2>
+                  <p className="mt-0.5 text-sm text-[var(--calorai-text-secondary)]">Scan your meal</p>
                 </div>
               </div>
               <div className="h-[360px] min-h-[360px] p-2 sm:h-[420px] sm:min-h-[420px] sm:p-4">
@@ -233,17 +232,17 @@ export function CalorieTracker() {
             </section>
           </div>
 
-          <div className="flex flex-col gap-4 md:gap-6 lg:max-h-[calc(100vh-220px)] lg:overflow-hidden">
-            <div className="lg:flex-1 lg:overflow-y-auto lg:pr-1">
-              <div className="flex flex-col gap-4 md:gap-6">
-                <MealList meals={meals} onDeleteMeal={deleteMeal} disabled={loading} />
-                <FoodLibrary
-                  userId={userId}
-                  refreshKey={libraryRefresh}
-                  logDate={date}
-                  onMealLogged={() => void loadDashboard()}
-                />
-              </div>
+          <div className="flex flex-col gap-6 md:gap-6 md:overflow-hidden">
+            <div className="shrink-0">
+              <MealList meals={meals} goals={goals} onDeleteMeal={deleteMeal} disabled={loading} />
+            </div>
+            <div className="md:min-h-0 md:flex-1">
+              <FoodLibrary
+                userId={userId}
+                refreshKey={libraryRefresh}
+                logDate={date}
+                onMealLogged={() => void loadDashboard()}
+              />
             </div>
           </div>
         </div>

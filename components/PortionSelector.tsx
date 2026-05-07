@@ -92,10 +92,10 @@ function QuickButtons({
           key={String(o)}
           type="button"
           onClick={() => onPick(o)}
-          className={`rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-[0.98] ${
+          className={`rounded-[var(--calorai-radius-btn)] border px-3 py-2 text-xs font-semibold transition active:scale-[0.98] ${
             Math.abs(o - value) < 1e-9
-              ? "border-calorai-primary/30 bg-calorai-primary/10 text-[#1C1C1E]"
-              : "border-black/[0.08] bg-white text-[#1C1C1E] hover:bg-calorai-bg"
+              ? "border-calorai-primary/35 bg-calorai-primary/10 text-[var(--calorai-text)]"
+              : "border-[var(--calorai-border)] bg-white text-[var(--calorai-text)] hover:bg-calorai-bg"
           }`}
         >
           {format(o)}
@@ -186,19 +186,19 @@ export default function PortionSelector({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#636366]">Portion</p>
-          <p className="mt-1 text-base font-bold text-[#1C1C1E]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--calorai-text-secondary)]">Portion</p>
+          <p className="mt-1 text-base font-bold text-[var(--calorai-text)]">
             {derived.display}
-            <span className="ml-2 text-sm font-semibold text-[#636366]">({derived.grams} g)</span>
+            <span className="ml-2 text-sm font-semibold text-[var(--calorai-text-secondary)]">({derived.grams} g)</span>
           </p>
         </div>
 
         {food.portion_type === "grams" || food.portion_type === "serving" ? null : (
-          <div className="flex items-center gap-1 rounded-2xl border border-black/[0.08] bg-white p-1 shadow-sm">
+          <div className="flex items-center gap-1 rounded-[var(--calorai-radius-btn)] border border-[var(--calorai-border)] bg-white p-1 shadow-[var(--calorai-shadow-sm)]">
             <button
               type="button"
               onClick={() => onQuantityChange(clamp(round1(quantity - u.step), minQ, maxQ))}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold text-[#636366] transition hover:bg-calorai-bg active:scale-95"
+              className="flex h-10 w-10 items-center justify-center rounded-[var(--calorai-radius-btn)] text-lg font-bold text-[var(--calorai-text-secondary)] transition hover:bg-calorai-bg active:scale-95"
               aria-label="Decrease portion"
             >
               −
@@ -210,7 +210,7 @@ export default function PortionSelector({
             <button
               type="button"
               onClick={() => onQuantityChange(clamp(round1(quantity + u.step), minQ, maxQ))}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-lg font-bold text-[#636366] transition hover:bg-calorai-bg active:scale-95"
+              className="flex h-10 w-10 items-center justify-center rounded-[var(--calorai-radius-btn)] text-lg font-bold text-[var(--calorai-text-secondary)] transition hover:bg-calorai-bg active:scale-95"
               aria-label="Increase portion"
             >
               +

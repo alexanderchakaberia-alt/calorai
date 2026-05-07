@@ -7,9 +7,9 @@ export default {
       colors: {
         calorai: {
           primary: "#007AFF",
-          success: "#34C759",
+          success: "#00C853",
           warning: "#FF9500",
-          bg: "#F5F5F7",
+          bg: "#F8F9FA",
         },
       },
       boxShadow: {

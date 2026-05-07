@@ -11,7 +11,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-calorai-bg antialiased">
-        <ClerkProvider>{children}</ClerkProvider>
+        <ClerkProvider>
+          <div className="calorai-page-shell">{children}</div>
+        </ClerkProvider>
       </body>
     </html>
   );

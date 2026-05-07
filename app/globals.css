@@ -4,12 +4,21 @@
 
 :root {
   --calorai-primary: #007aff;
-  --calorai-success: #34c759;
+  --calorai-success: #00c853;
   --calorai-warning: #ff9500;
-  --calorai-bg: #f5f5f7;
+  --calorai-error: #ff3b30;
+  --calorai-bg: #f8f9fa;
   --calorai-card: #ffffff;
-  --calorai-text: #1c1c1e;
-  --calorai-text-secondary: #636366;
+  --calorai-text: #000000;
+  --calorai-text-secondary: #666666;
+  --calorai-border: #e5e5ea;
+  --calorai-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --calorai-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --calorai-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --calorai-radius-btn: 10px;
+  --calorai-radius-card: 12px;
+  --calorai-radius-modal: 16px;
+  --calorai-transition: 0.3s ease-in-out;
 }
 
 html,
@@ -22,6 +31,109 @@ body {
   background-color: var(--calorai-bg);
   color: var(--calorai-text);
   -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .cal-card {
+    border-radius: var(--calorai-radius-card);
+    background: var(--calorai-card);
+    box-shadow: var(--calorai-shadow-sm);
+    border: 1px solid var(--calorai-border);
+  }
+
+  .cal-card-hover {
+    transition: transform var(--calorai-transition), box-shadow var(--calorai-transition), border-color var(--calorai-transition);
+    will-change: transform;
+  }
+  .cal-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--calorai-shadow-md);
+  }
+
+  .btn-primary {
+    background: var(--calorai-primary);
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--calorai-radius-btn);
+    font-weight: 600;
+    transition: transform var(--calorai-transition), box-shadow var(--calorai-transition), background-color var(--calorai-transition);
+  }
+  .btn-primary:hover {
+    background: #0051d5;
+    box-shadow: var(--calorai-shadow-md);
+    transform: scale(1.02);
+  }
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: white;
+    border: 1px solid var(--calorai-border);
+    color: var(--calorai-text);
+    padding: 12px 24px;
+    border-radius: var(--calorai-radius-btn);
+    font-weight: 600;
+    transition: transform var(--calorai-transition), box-shadow var(--calorai-transition), background-color var(--calorai-transition);
+  }
+  .btn-secondary:hover {
+    background: var(--calorai-bg);
+    box-shadow: var(--calorai-shadow-sm);
+    transform: scale(1.01);
+  }
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+  .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-danger {
+    background: var(--calorai-error);
+    color: white;
+    padding: 12px 24px;
+    border-radius: var(--calorai-radius-btn);
+    font-weight: 600;
+    transition: transform var(--calorai-transition), box-shadow var(--calorai-transition), background-color var(--calorai-transition);
+  }
+  .btn-danger:hover {
+    background: #cc2d24;
+    box-shadow: var(--calorai-shadow-md);
+    transform: scale(1.02);
+  }
+  .btn-danger:active {
+    transform: scale(0.98);
+  }
+  .btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .cal-input {
+    border: 1px solid var(--calorai-border);
+    border-radius: var(--calorai-radius-btn);
+    padding: 12px 16px;
+    font-size: 16px;
+    transition: border-color var(--calorai-transition), box-shadow var(--calorai-transition), background-color var(--calorai-transition);
+    outline: none;
+    background: white;
+    color: var(--calorai-text);
+  }
+  .cal-input:focus {
+    border-color: var(--calorai-primary);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+  }
 }
 
 @keyframes calorai-scan {
@@ -56,8 +168,56 @@ body {
   }
 }
 
+@keyframes calorai-page-shell {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes calorai-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes calorai-toast-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.calorai-page-shell {
+  min-height: 100%;
+  animation: calorai-page-shell 0.35s cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+.cal-cal-toast-enter {
+  animation: calorai-toast-in 0.3s ease-out both;
+}
+
+.cal-cal-toast-exit {
+  animation: calorai-toast-out 0.3s ease-in both;
+}
+
+.cal-macro-fill {
+  transition: width var(--calorai-transition), background-color var(--calorai-transition);
+}
+
 .calorai-enter {
-  animation: calorai-fade-in 0.4s ease-out both;
+  animation: calorai-fade-in 0.3s ease-out both;
 }
 
 .calorai-enter-delay-1 {
@@ -170,4 +330,22 @@ body {
     flex-direction: row;
     justify-content: flex-end;
   }
+}
+
+/* Food library internal scrollbar (desktop) */
+.food-items-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.food-items-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.food-items-grid::-webkit-scrollbar-thumb {
+  background: #e5e5ea;
+  border-radius: 3px;
+}
+
+.food-items-grid::-webkit-scrollbar-thumb:hover {
+  background: #c7c7cc;
 }

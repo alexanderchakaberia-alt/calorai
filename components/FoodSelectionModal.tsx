@@ -34,7 +34,7 @@ export default function FoodSelectionModal({
 
   useEffect(() => {
     if (!toast) return undefined;
-    const t = setTimeout(() => setToast(null), 2200);
+    const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -100,16 +100,16 @@ export default function FoodSelectionModal({
           <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-black/[0.12]" aria-hidden />
         </div>
 
-        <div className="flex items-start justify-between gap-3 border-b border-black/[0.06] pb-4">
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--calorai-border)] pb-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#636366]">{food.category}</p>
-            <h3 className="mt-1 truncate text-lg font-bold text-[#1C1C1E]">{food.name}</h3>
-            <p className="mt-1 text-sm text-[#636366]">Default: {food.serving_unit}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--calorai-text-secondary)]">{food.category}</p>
+            <h3 className="mt-1 truncate text-lg font-bold text-[var(--calorai-text)]">{food.name}</h3>
+            <p className="mt-1 text-sm text-[var(--calorai-text-secondary)]">Default: {food.serving_unit}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-calorai-bg text-[#636366] transition hover:bg-black/[0.06] active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-calorai-bg text-[var(--calorai-text-secondary)] transition hover:bg-black/[0.06] active:scale-95"
             aria-label="Close"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
@@ -123,18 +123,14 @@ export default function FoodSelectionModal({
         </div>
 
         <div className="modal-buttons">
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[48px] rounded-2xl border border-black/[0.08] bg-white px-5 py-3 text-sm font-semibold text-[#1C1C1E] shadow-sm transition hover:bg-calorai-bg active:scale-[0.99]"
-          >
+          <button type="button" onClick={onClose} className="btn-secondary w-full min-h-[48px] sm:w-auto">
             Cancel
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={() => void addToLog()}
-            className="min-h-[48px] rounded-2xl bg-calorai-primary px-6 py-3 text-sm font-semibold text-white shadow-card transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
+            className="btn-primary w-full min-h-[48px] sm:w-auto"
           >
             {busy ? "Adding…" : "Add to log"}
           </button>
@@ -143,7 +139,7 @@ export default function FoodSelectionModal({
 
       {toast ? (
         <div
-          className="calorai-enter fixed bottom-6 left-1/2 z-[70] max-w-sm -translate-x-1/2 rounded-2xl border border-black/[0.08] bg-[#1C1C1E] px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
+          className="cal-cal-toast-enter fixed left-1/2 top-4 z-[70] max-w-[min(92vw,420px)] -translate-x-1/2 rounded-[var(--calorai-radius-card)] bg-[var(--calorai-text)] px-4 py-3 text-center text-sm font-medium text-white shadow-[var(--calorai-shadow-lg)]"
           role="status"
         >
           {toast}
