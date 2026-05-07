@@ -69,3 +69,105 @@ body {
 .calorai-enter-delay-3 {
   animation-delay: 0.15s;
 }
+
+/* Food selection modal (portal-safe) */
+@keyframes calorai-modal-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes calorai-modal-scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes calorai-modal-slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: calorai-modal-fadeIn 0.3s ease-in-out both;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-end;
+  }
+}
+
+.modal-content {
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  width: 90vw;
+  max-width: 600px;
+  max-height: 85vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: calorai-modal-scaleIn 0.3s ease-in-out both;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 100vw;
+    max-width: 100vw;
+    height: 90vh;
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    animation-name: calorai-modal-slideUp;
+  }
+}
+
+.modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.modal-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e5ea;
+  position: sticky;
+  bottom: 0;
+  background: white;
+}
+
+@media (min-width: 769px) {
+  .modal-buttons {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
