@@ -637,7 +637,7 @@ export function FoodLibrary({
   }
 
   return (
-    <section className="relative calorai-enter calorai-enter-delay-2 rounded-2xl bg-white p-4 shadow-card sm:p-5">
+    <section className="relative calorai-enter calorai-enter-delay-2 flex max-h-[400px] flex-col overflow-hidden rounded-2xl bg-white p-4 shadow-card sm:p-5">
       {toast ? (
         <div
           className="calorai-enter fixed bottom-6 left-1/2 z-[60] max-w-sm -translate-x-1/2 rounded-2xl border border-calorai-success/25 bg-[#1C1C1E] px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
@@ -647,12 +647,12 @@ export function FoodLibrary({
         </div>
       ) : null}
 
-      <div className="mb-4">
+      <div className="mb-3">
         <h2 className="text-base font-bold text-[#1C1C1E]">Food library</h2>
         <p className="mt-0.5 text-sm text-[#636366]">Pick a food → adjust portion → add to the selected date</p>
       </div>
 
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+      <div className="mb-3 flex gap-2 overflow-x-auto whitespace-nowrap pb-1 [-webkit-overflow-scrolling:touch]">
         {FOOD_CATEGORIES.map((t) => (
           <button
             key={t.key}
@@ -667,7 +667,7 @@ export function FoodLibrary({
         ))}
       </div>
 
-      <div className="relative mb-5">
+      <div className="relative mb-3">
         <svg className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#C7C7CC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
@@ -680,21 +680,22 @@ export function FoodLibrary({
         />
       </div>
 
-      {loading ? (
-        <p className="py-6 text-center text-sm text-[#636366]">Loading history…</p>
-      ) : showNoResults ? (
-        <div className="rounded-xl border border-dashed border-black/[0.1] bg-calorai-bg py-10 text-center">
-          <p className="text-sm font-semibold text-[#1C1C1E]">No results</p>
-          <p className="mt-1 text-sm text-[#636366]">Try a different search.</p>
-        </div>
-      ) : query.trim() ? (
-        <div className="space-y-7">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        {loading ? (
+          <p className="py-6 text-center text-sm text-[#636366]">Loading history…</p>
+        ) : showNoResults ? (
+          <div className="rounded-xl border border-dashed border-black/[0.1] bg-calorai-bg py-10 text-center">
+            <p className="text-sm font-semibold text-[#1C1C1E]">No results</p>
+            <p className="mt-1 text-sm text-[#636366]">Try a different search.</p>
+          </div>
+        ) : query.trim() ? (
+          <div className="space-y-7">
           <div>
             <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[#636366]">Your Foods</h3>
             {yourFoods.length === 0 ? (
               <p className="text-sm text-[#636366]">No local matches.</p>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 {yourFoods.map((m) => (
                   <LibraryFoodCard
                     key={m.key}
@@ -717,7 +718,7 @@ export function FoodLibrary({
             {usdaModels.length === 0 ? (
               <p className="text-sm text-[#636366]">No USDA results.</p>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 {usdaModels.map((m) => (
                   <LibraryFoodCard key={m.key} model={m} query={query} starBusy={false} onFavorite={() => {}} onOpen={() => openFood(m)} />
                 ))}
@@ -730,7 +731,7 @@ export function FoodLibrary({
             {offModels.length === 0 ? (
               <p className="text-sm text-[#636366]">No branded results.</p>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 {offModels.map((m) => (
                   <LibraryFoodCard key={m.key} model={m} query={query} starBusy={false} onFavorite={() => {}} onOpen={() => openFood(m)} />
                 ))}
@@ -755,8 +756,8 @@ export function FoodLibrary({
             </button>
           </div>
         </div>
-      ) : activeTab === "favorites" ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        ) : activeTab === "favorites" ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {tabFavoritesModels.length === 0 ? (
             <p className="py-6 text-sm text-[#636366]">Star foods to pin them here.</p>
           ) : (
@@ -773,7 +774,7 @@ export function FoodLibrary({
           )}
         </div>
       ) : activeTab === "recent" ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {tabRecentModels.length === 0 ? (
             <p className="py-6 text-sm text-[#636366]">Scan meals or add from the database to populate Recents.</p>
           ) : (
@@ -790,7 +791,7 @@ export function FoodLibrary({
           )}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {filteredDb.slice(0, 60).map((m) => (
             <LibraryFoodCard
               key={m.key}
@@ -802,7 +803,8 @@ export function FoodLibrary({
             />
           ))}
         </div>
-      )}
+        )}
+      </div>
 
       <FoodSelectionModal
         open={modalOpen}

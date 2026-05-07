@@ -5,7 +5,8 @@ export type PortionType =
   | "grams"
   | "tablespoons"
   | "bowls"
-  | "scoops";
+  | "scoops"
+  | "serving";
 
 export type FoodCategory =
   | "Breads & Bakery"
@@ -35,6 +36,11 @@ export type FoodDbItem = {
   portion_type: PortionType;
   /** Common portion quantities in the `portion_type` unit. (For grams: gram amounts.) */
   portion_options: number[];
+  /**
+   * Optional labels for `portion_options`.
+   * Used for drinks with `portion_type: "serving"` (e.g. "1 can", "1 glass").
+   */
+  portion_option_labels?: Record<string, string>;
   /** Nutrition per default serving (serving_size / serving_unit). */
   calories: number;
   protein: number;
@@ -1488,10 +1494,16 @@ export const FOOD_DATABASE: FoodDbItem[] = [
   f({
     name: "Orange juice",
     category: "Drinks",
-    serving_size: 248,
-    serving_unit: "1 cup",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    serving_size: 250,
+    serving_unit: "1 glass (250 ml)",
+    portion_type: "serving",
+    portion_options: [200, 240, 250, 350],
+    portion_option_labels: {
+      "200": "Small glass",
+      "240": "1 cup",
+      "250": "1 glass",
+      "350": "Large glass",
+    },
     calories: 112,
     protein: 1.7,
     fat: 0.5,
@@ -1501,10 +1513,16 @@ export const FOOD_DATABASE: FoodDbItem[] = [
   f({
     name: "Apple juice",
     category: "Drinks",
-    serving_size: 248,
-    serving_unit: "1 cup",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    serving_size: 250,
+    serving_unit: "1 glass (250 ml)",
+    portion_type: "serving",
+    portion_options: [200, 240, 250, 350],
+    portion_option_labels: {
+      "200": "Small glass",
+      "240": "1 cup",
+      "250": "1 glass",
+      "350": "Large glass",
+    },
     calories: 114,
     protein: 0.2,
     fat: 0.3,
@@ -1516,8 +1534,17 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     category: "Drinks",
     serving_size: 330,
     serving_unit: "1 can (330 ml)",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    portion_type: "serving",
+    portion_options: [240, 250, 330, 500, 480, 1000, 2000],
+    portion_option_labels: {
+      "250": "1 glass",
+      "330": "1 can",
+      "240": "1 cup",
+      "500": "Small bottle",
+      "480": "Large bottle poured (2 cups)",
+      "1000": "1 liter bottle",
+      "2000": "2 liter bottle",
+    },
     calories: 140,
     protein: 0,
     fat: 0,
@@ -1528,9 +1555,15 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     name: "Coffee black",
     category: "Drinks",
     serving_size: 240,
-    serving_unit: "1 cup",
-    portion_type: "cups",
-    portion_options: [1, 2, 3, 4],
+    serving_unit: "Small cup (240 ml)",
+    portion_type: "serving",
+    portion_options: [30, 240, 350, 470],
+    portion_option_labels: {
+      "30": "Espresso shot",
+      "240": "Small cup",
+      "350": "Medium cup",
+      "470": "Large cup",
+    },
     calories: 0,
     protein: 0,
     fat: 0,
@@ -1541,9 +1574,15 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     name: "Coffee with milk",
     category: "Drinks",
     serving_size: 240,
-    serving_unit: "1 cup",
-    portion_type: "cups",
-    portion_options: [1, 2, 3],
+    serving_unit: "Small cup (240 ml)",
+    portion_type: "serving",
+    portion_options: [30, 240, 350, 470],
+    portion_option_labels: {
+      "30": "Espresso shot",
+      "240": "Small cup",
+      "350": "Medium cup",
+      "470": "Large cup",
+    },
     calories: 30,
     protein: 1.5,
     fat: 1.0,
@@ -1554,9 +1593,15 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     name: "Latte",
     category: "Drinks",
     serving_size: 350,
-    serving_unit: "1 large (350 ml)",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    serving_unit: "Medium cup (350 ml)",
+    portion_type: "serving",
+    portion_options: [30, 240, 350, 470],
+    portion_option_labels: {
+      "30": "Espresso shot",
+      "240": "Small cup",
+      "350": "Medium cup",
+      "470": "Large cup",
+    },
     calories: 190,
     protein: 10.0,
     fat: 7.0,
@@ -1567,9 +1612,15 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     name: "Cappuccino",
     category: "Drinks",
     serving_size: 240,
-    serving_unit: "1 cup",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    serving_unit: "Small cup (240 ml)",
+    portion_type: "serving",
+    portion_options: [30, 240, 350, 470],
+    portion_option_labels: {
+      "30": "Espresso shot",
+      "240": "Small cup",
+      "350": "Medium cup",
+      "470": "Large cup",
+    },
     calories: 120,
     protein: 6.0,
     fat: 4.0,
@@ -1581,8 +1632,14 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     category: "Drinks",
     serving_size: 300,
     serving_unit: "1 cup (300 ml)",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    portion_type: "serving",
+    portion_options: [200, 240, 300, 350],
+    portion_option_labels: {
+      "200": "Small glass",
+      "240": "1 cup",
+      "300": "1 cup (300 ml)",
+      "350": "Large glass",
+    },
     calories: 180,
     protein: 3.0,
     fat: 2.0,
@@ -1607,8 +1664,12 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     category: "Drinks",
     serving_size: 330,
     serving_unit: "1 can (330 ml)",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    portion_type: "serving",
+    portion_options: [330, 500],
+    portion_option_labels: {
+      "330": "Glass/can",
+      "500": "Pint/bottle",
+    },
     calories: 153,
     protein: 1.6,
     fat: 0,
@@ -1620,8 +1681,13 @@ export const FOOD_DATABASE: FoodDbItem[] = [
     category: "Drinks",
     serving_size: 148,
     serving_unit: "1 glass (148 ml)",
-    portion_type: "cups",
-    portion_options: [0.5, 1, 1.5, 2],
+    portion_type: "serving",
+    portion_options: [125, 148, 250],
+    portion_option_labels: {
+      "125": "Small glass",
+      "148": "Standard glass",
+      "250": "Large glass",
+    },
     calories: 125,
     protein: 0.1,
     fat: 0,

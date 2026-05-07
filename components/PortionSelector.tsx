@@ -18,6 +18,7 @@ export type PortionFood = {
   serving_unit: string;
   portion_type: PortionType;
   portion_options: number[];
+  portion_option_labels?: Record<string, string>;
   calories: number;
   protein: number;
   fat: number;
@@ -68,6 +69,8 @@ function unitLabel(t: PortionType): { singular: string; plural: string; step: nu
     case "grams":
     default:
       return { singular: "g", plural: "g", step: 25 };
+    case "serving":
+      return { singular: "serving", plural: "servings", step: 1 };
   }
 }
 
@@ -103,10 +106,14 @@ function QuickButtons({
 }
 
 export function computePortionState(food: PortionFood, quantity: number): PortionState {
-  const baseQty = 1;
   const q = Number.isFinite(quantity) ? quantity : 1;
-  const ratio = q / baseQty;
-  const grams = Math.max(1, Math.round(food.serving_size * ratio));
+  const base = food.portion_type === "serving" ? Math.max(1, Number(food.serving_size) || 1) : 1;
+  const ratio = q / base;
+
+  const grams =
+    food.portion_type === "serving"
+      ? Math.max(1, Math.round(q)) // for drinks: treat as ml ~ grams
+      : Math.max(1, Math.round(food.serving_size * ratio));
   const macros = scaleMacros(
     {
       calories: food.calories,
@@ -119,11 +126,12 @@ export function computePortionState(food: PortionFood, quantity: number): Portio
   );
 
   const u = unitLabel(food.portion_type);
-  const unit = q === 1 ? u.singular : u.plural;
   const display =
     food.portion_type === "grams"
       ? `${Math.round(q)} g`
-      : `${q % 1 === 0 ? Math.round(q) : q} ${unit}`;
+      : food.portion_type === "serving"
+        ? `${Math.round(q)} ml`
+        : `${q % 1 === 0 ? Math.round(q) : q} ${q === 1 ? u.singular : u.plural}`;
 
   return { quantity: q, grams, display, macros };
 }
@@ -142,6 +150,7 @@ export default function PortionSelector({
   const derived = useMemo(() => computePortionState(food, quantity), [food, quantity]);
 
   const quickOptions = useMemo(() => {
+    if (food.portion_type === "serving") return food.portion_options;
     if (food.portion_type === "grams") return food.portion_options;
     // Use per-type defaults when missing / too short.
     if (food.portion_options?.length >= 3) return food.portion_options;
@@ -154,10 +163,20 @@ export default function PortionSelector({
     return [1, 2, 3];
   }, [food.portion_options, food.portion_type]);
 
-  const minQ = food.portion_type === "cups" || food.portion_type === "tablespoons" || food.portion_type === "scoops" ? 0.25 : 1;
-  const maxQ = food.portion_type === "grams" ? 500 : 12;
+  const minQ =
+    food.portion_type === "serving"
+      ? 100
+      : food.portion_type === "cups" || food.portion_type === "tablespoons" || food.portion_type === "scoops"
+        ? 0.25
+        : 1;
+  const maxQ = food.portion_type === "serving" ? 2000 : food.portion_type === "grams" ? 500 : 12;
 
   const formatQuick = (n: number) => {
+    if (food.portion_type === "serving") {
+      const label = food.portion_option_labels?.[String(n)];
+      const cal = computePortionState(food, n).macros.calories;
+      return label ? `${label} (${Math.round(n)}ml) — ${cal} kcal` : `${Math.round(n)} ml`;
+    }
     if (food.portion_type === "grams") return `${Math.round(n)} g`;
     const unit = n === 1 ? u.singular : u.plural;
     return `${n % 1 === 0 ? Math.round(n) : n} ${unit}`;
@@ -174,7 +193,7 @@ export default function PortionSelector({
           </p>
         </div>
 
-        {food.portion_type === "grams" ? null : (
+        {food.portion_type === "grams" || food.portion_type === "serving" ? null : (
           <div className="flex items-center gap-1 rounded-2xl border border-black/[0.08] bg-white p-1 shadow-sm">
             <button
               type="button"
@@ -200,7 +219,45 @@ export default function PortionSelector({
         )}
       </div>
 
-      {food.portion_type === "grams" ? (
+      {food.portion_type === "serving" ? (
+        <div className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {quickOptions.map((o) => (
+              <button
+                key={String(o)}
+                type="button"
+                onClick={() => onQuantityChange(o)}
+                className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold transition active:scale-[0.99] ${
+                  Math.abs(o - quantity) < 1e-6
+                    ? "border-calorai-primary/30 bg-calorai-primary/10 text-[#1C1C1E]"
+                    : "border-black/[0.08] bg-white text-[#1C1C1E] hover:bg-calorai-bg"
+                }`}
+              >
+                {formatQuick(o)}
+              </button>
+            ))}
+          </div>
+          <div className="rounded-2xl border border-black/[0.06] bg-calorai-bg p-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#636366]">Custom amount</span>
+              <span className="text-sm font-semibold tabular-nums text-[#1C1C1E]">{Math.round(quantity)} ml</span>
+            </div>
+            <input
+              type="range"
+              min={100}
+              max={2000}
+              step={10}
+              value={Math.round(quantity)}
+              onChange={(e) => onQuantityChange(clamp(Number(e.target.value), 100, 2000))}
+              className="mt-3 w-full accent-[var(--calorai-primary)]"
+            />
+            <div className="mt-2 flex items-baseline justify-between text-xs text-[#636366]">
+              <span>100 ml</span>
+              <span>2000 ml</span>
+            </div>
+          </div>
+        </div>
+      ) : food.portion_type === "grams" ? (
         <div className="space-y-3">
           <input
             type="range"
@@ -219,7 +276,9 @@ export default function PortionSelector({
         </div>
       ) : null}
 
-      <QuickButtons options={quickOptions} value={quantity} onPick={onQuantityChange} format={formatQuick} />
+      {food.portion_type === "serving" ? null : (
+        <QuickButtons options={quickOptions} value={quantity} onPick={onQuantityChange} format={formatQuick} />
+      )}
 
       <div className="rounded-2xl border border-black/[0.06] bg-calorai-bg p-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">

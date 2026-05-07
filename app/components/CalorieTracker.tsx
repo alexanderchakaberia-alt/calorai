@@ -195,7 +195,7 @@ export function CalorieTracker() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8">
+        <div className="flex flex-col gap-4 md:gap-6 lg:grid lg:grid-cols-2 lg:items-stretch lg:gap-4">
           <div className="flex flex-col gap-6">
             {goals ? (
               <MacroRing goals={goals} totals={totals} onSetGoals={() => setGoalsModalOpen(true)} />
@@ -221,7 +221,7 @@ export function CalorieTracker() {
                   <p className="mt-0.5 text-sm text-[#636366]">Scan your meal</p>
                 </div>
               </div>
-              <div className="min-h-[200px] p-2 sm:p-4">
+              <div className="h-[360px] min-h-[360px] p-2 sm:h-[420px] sm:min-h-[420px] sm:p-4">
                 <CameraCapture
                   key={userId}
                   logDate={date}
@@ -233,14 +233,18 @@ export function CalorieTracker() {
             </section>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <MealList meals={meals} onDeleteMeal={deleteMeal} disabled={loading} />
-            <FoodLibrary
-              userId={userId}
-              refreshKey={libraryRefresh}
-              logDate={date}
-              onMealLogged={() => void loadDashboard()}
-            />
+          <div className="flex flex-col gap-4 md:gap-6 lg:max-h-[calc(100vh-220px)] lg:overflow-hidden">
+            <div className="lg:flex-1 lg:overflow-y-auto lg:pr-1">
+              <div className="flex flex-col gap-4 md:gap-6">
+                <MealList meals={meals} onDeleteMeal={deleteMeal} disabled={loading} />
+                <FoodLibrary
+                  userId={userId}
+                  refreshKey={libraryRefresh}
+                  logDate={date}
+                  onMealLogged={() => void loadDashboard()}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </main>

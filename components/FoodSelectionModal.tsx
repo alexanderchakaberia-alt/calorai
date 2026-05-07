@@ -88,14 +88,9 @@ export default function FoodSelectionModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/35 p-3 sm:items-center sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" onClick={onClose}>
       <div
-        className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="calorai-enter flex w-full max-w-[500px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-black/[0.06] p-4 sm:p-5">
@@ -103,7 +98,7 @@ export default function FoodSelectionModal({
             <p className="text-xs font-semibold uppercase tracking-wide text-[#636366]">{food.category}</p>
             <h3 className="mt-1 truncate text-lg font-bold text-[#1C1C1E]">{food.name}</h3>
             <p className="mt-1 text-sm text-[#636366]">
-              Default: {food.serving_unit} · {food.serving_size} g
+              Default: {food.serving_unit}
             </p>
           </div>
           <button
@@ -122,7 +117,7 @@ export default function FoodSelectionModal({
           <PortionSelector food={food} quantity={quantity} onQuantityChange={setQuantity} />
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-black/[0.06] p-4 sm:flex-row sm:justify-end sm:p-5">
+        <div className="sticky bottom-0 flex flex-col gap-2 border-t border-black/[0.06] bg-white p-4 sm:flex-row sm:justify-end sm:p-5">
           <button
             type="button"
             onClick={onClose}
