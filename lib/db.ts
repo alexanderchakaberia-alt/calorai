@@ -3,7 +3,14 @@
  * `daily_goals.user_id`, and `past_foods.user_id` must be TEXT — see `supabase/migrations/*_clerk_user_id_text.sql`.
  */
 import { assertClerkUserId, getSupabaseForClerkUser } from "./supabase";
-import type { DailyGoals, ISODateString, MacroTotals, MealEntry, PastFoodEntry } from "./types";
+import type {
+  DailyGoals,
+  DailyHistoryRollup,
+  ISODateString,
+  MacroTotals,
+  MealEntry,
+  PastFoodEntry,
+} from "./types";
 
 const DEFAULTS = Object.freeze({
   calorie_goal: 2000,
@@ -186,6 +193,75 @@ export async function getDailyTotals(userId: string, date: ISODateString): Promi
     }),
     { calories: 0, protein: 0, fat: 0, carbs: 0 }
   );
+}
+
+function subtractUtcCalendarDays(date: ISODateString, days: number): ISODateString {
+  const d = new Date(`${date}T12:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10) as ISODateString;
+}
+
+/**
+ * Per UTC calendar day rollups for the last `pastDayCount` complete days strictly before `todayUtc`.
+ */
+export async function getPastDaysDailyRollups(
+  userId: string,
+  opts?: { pastDayCount?: number; todayUtc?: ISODateString }
+): Promise<{ today: ISODateString; rollups: DailyHistoryRollup[] }> {
+  assertClerkUserId(userId);
+  await ensureUser(userId);
+  const supabase = getSupabaseForClerkUser(userId);
+
+  const today = opts?.todayUtc ?? (new Date().toISOString().slice(0, 10) as ISODateString);
+  const pastDayCount = Math.min(31, Math.max(1, Math.floor(opts?.pastDayCount ?? 7)));
+  const rangeStart = subtractUtcCalendarDays(today, pastDayCount);
+
+  const { data, error } = await supabase
+    .from("meal_logs")
+    .select("logged_at,calories,protein,fat,carbs,fiber")
+    .eq("user_id", userId)
+    .gte("logged_at", `${rangeStart}T00:00:00.000Z`)
+    .lt("logged_at", `${today}T00:00:00.000Z`);
+
+  if (error) throw new Error(error.message);
+
+  type Agg = { total_calories: number; total_protein: number; total_fat: number; total_carbs: number; total_fiber: number; meal_count: number };
+  const zero = (): Agg => ({
+    total_calories: 0,
+    total_protein: 0,
+    total_fat: 0,
+    total_carbs: 0,
+    total_fiber: 0,
+    meal_count: 0,
+  });
+
+  const byDate = new Map<ISODateString, Agg>();
+
+  for (const row of data ?? []) {
+    const logged = row.logged_at as string | undefined;
+    if (!logged) continue;
+    const dayKey = logged.slice(0, 10) as ISODateString;
+    const agg = byDate.get(dayKey) ?? zero();
+    agg.total_calories += Math.max(0, Math.floor(toNumber(row.calories)));
+    agg.total_protein += toNumber(row.protein);
+    agg.total_fat += toNumber(row.fat);
+    agg.total_carbs += toNumber(row.carbs);
+    agg.total_fiber += toNumber(row.fiber);
+    agg.meal_count += 1;
+    byDate.set(dayKey, agg);
+  }
+
+  const rollups: DailyHistoryRollup[] = [];
+  for (let back = 1; back <= pastDayCount; back++) {
+    const dateStr = subtractUtcCalendarDays(today, back);
+    const agg = byDate.get(dateStr) ?? zero();
+    rollups.push({
+      date: dateStr,
+      ...agg,
+    });
+  }
+
+  return { today, rollups };
 }
 
 export function foodKeyFromName(foodName: string): string {

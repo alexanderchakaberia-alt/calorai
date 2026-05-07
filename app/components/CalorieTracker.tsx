@@ -1,13 +1,14 @@
 "use client";
 
 import CameraCapture from "@/components/CameraCapture";
+import { DailyHistory } from "@/components/DailyHistory";
 import GoalsCalculator, { CALORAI_GOALS_LS_KEY } from "@/components/GoalsCalculator";
 import { FoodLibrary } from "@/app/components/FoodLibrary";
 import { MacroRing } from "@/app/components/MacroRing";
 import { MealList } from "@/app/components/MealList";
 import type { DailyGoals, MacroTotals, MealEntry } from "@/lib/types";
 import { SignOutButton, UserButton, useUser } from "@clerk/nextjs";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -41,6 +42,7 @@ export function CalorieTracker() {
   const [libraryRefresh, setLibraryRefresh] = useState(0);
   const [goalsModalOpen, setGoalsModalOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const viewingTodayRef = useRef(true);
 
   const canQuery = isLoaded && !!userId;
 
@@ -105,6 +107,19 @@ export function CalorieTracker() {
     }
   }, [hydrated, canQuery]);
 
+  useEffect(() => {
+    viewingTodayRef.current = date === todayISO();
+  }, [date]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const today = todayISO();
+      if (!viewingTodayRef.current) return;
+      setDate((prev) => (prev !== today ? today : prev));
+    }, 60000);
+    return () => window.clearInterval(id);
+  }, []);
+
   async function deleteMeal(id: string) {
     const res = await fetch(`/api/meals/${encodeURIComponent(id)}`, {
       method: "DELETE",
@@ -126,7 +141,7 @@ export function CalorieTracker() {
   }
 
   return (
-    <div className="min-h-screen bg-calorai-bg md:flex md:h-screen md:flex-col md:overflow-hidden">
+    <div className="min-h-screen bg-calorai-bg pb-16">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-br from-[#007AFF] to-[#0051D5] text-white shadow-[var(--calorai-shadow-md)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5 sm:px-6">
           <span className="text-xl font-bold tracking-tight">CalorAI</span>
@@ -148,7 +163,7 @@ export function CalorieTracker() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 md:flex-1 md:overflow-hidden md:pb-6">
+      <main className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
         <div className="calorai-enter mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <label htmlFor="tracker-date" className="block text-xs font-semibold uppercase tracking-wide text-[var(--calorai-text-secondary)]">
@@ -159,7 +174,11 @@ export function CalorieTracker() {
               type="date"
               value={date}
               max={todayISO()}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setDate(v);
+                viewingTodayRef.current = v === todayISO();
+              }}
               className="cal-input mt-1.5 w-full max-w-[220px]"
             />
           </div>
@@ -194,8 +213,8 @@ export function CalorieTracker() {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-4 md:flex-1 md:gap-6 md:overflow-hidden md:grid md:grid-cols-2 md:items-stretch md:gap-6">
-          <div className="flex flex-col gap-6 md:overflow-hidden">
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+          <div className="flex flex-col gap-6">
             {goals ? (
               <MacroRing goals={goals} totals={totals} onSetGoals={() => setGoalsModalOpen(true)} />
             ) : (
@@ -232,11 +251,11 @@ export function CalorieTracker() {
             </section>
           </div>
 
-          <div className="flex flex-col gap-6 md:gap-6 md:overflow-hidden">
-            <div className="shrink-0">
+          <div className="flex flex-col gap-6">
+            <div>
               <MealList meals={meals} goals={goals} onDeleteMeal={deleteMeal} disabled={loading} />
             </div>
-            <div className="md:min-h-0 md:flex-1">
+            <div className="">
               <FoodLibrary
                 userId={userId}
                 refreshKey={libraryRefresh}
@@ -246,6 +265,15 @@ export function CalorieTracker() {
             </div>
           </div>
         </div>
+
+        <DailyHistory
+          refreshKey={libraryRefresh}
+          calorieGoal={Math.max(1, Number(goals?.calorie_goal) || 2000)}
+          onSelectDay={(iso) => {
+            setDate(iso);
+            viewingTodayRef.current = iso === todayISO();
+          }}
+        />
       </main>
     </div>
   );

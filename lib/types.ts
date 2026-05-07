@@ -49,6 +49,23 @@ export type GetGoalsResponse = {
   goals: DailyGoals;
 };
 
+/** Aggregated totals for calendar days UTC (excluding “today”). */
+export type DailyHistoryRollup = {
+  date: ISODateString;
+  total_calories: number;
+  total_protein: number;
+  total_fat: number;
+  total_carbs: number;
+  total_fiber: number;
+  meal_count: number;
+};
+
+export type GetDailyHistoryResponse = {
+  rollups: DailyHistoryRollup[];
+  /** UTC calendar day boundary used as “today” when computing ranges. */
+  today: ISODateString;
+};
+
 export type ApiErrorResponse = {
   error: string;
   /** Machine-readable reason for clients (e.g. SUPABASE_NOT_CONFIGURED). */

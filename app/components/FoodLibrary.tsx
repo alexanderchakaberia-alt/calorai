@@ -637,7 +637,7 @@ export function FoodLibrary({
   }
 
   return (
-    <section className="relative calorai-enter calorai-enter-delay-2 flex flex-col overflow-hidden rounded-[var(--calorai-radius-card)] border border-[var(--calorai-border)] bg-white p-5 shadow-[var(--calorai-shadow-sm)] md:min-h-0 md:flex-1">
+    <section className="relative calorai-enter calorai-enter-delay-2 flex flex-col rounded-[var(--calorai-radius-card)] border border-[var(--calorai-border)] bg-white p-5 shadow-[var(--calorai-shadow-sm)]">
       {toast ? (
         <div
           className="cal-cal-toast-enter fixed bottom-6 left-1/2 z-[60] max-w-sm -translate-x-1/2 rounded-[var(--calorai-radius-card)] bg-[var(--calorai-text)] px-4 py-3 text-center text-sm font-medium text-white shadow-[var(--calorai-shadow-lg)]"
@@ -682,7 +682,7 @@ export function FoodLibrary({
         />
       </div>
 
-      <div className="food-items-grid min-h-0 flex-1 overflow-visible pr-1 md:overflow-y-auto">
+      <div className="food-items-grid min-h-0 overscroll-contain overflow-x-hidden overflow-y-visible pr-1 lg:max-h-[min(420px,52vh)] lg:overflow-y-auto">
         {loading ? (
           <p className="py-6 text-center text-sm text-[#636366]">Loading history…</p>
         ) : showNoResults ? (

@@ -66,8 +66,10 @@ export async function GET(req: Request) {
     const { userId } = authResult;
 
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date");
-    if (!date) return jsonError("Missing required query param: date (YYYY-MM-DD).", 400, "BAD_REQUEST");
+    const raw = searchParams.get("date");
+    const fallback = new Date().toISOString().slice(0, 10);
+    const date = (raw && raw.trim()) || fallback;
+
     if (!isISODate(date)) return jsonError("Invalid date format. Expected YYYY-MM-DD.", 400, "BAD_REQUEST");
 
     const [meals, totals] = await Promise.all([
