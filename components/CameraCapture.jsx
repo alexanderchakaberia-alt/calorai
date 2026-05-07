@@ -1,33 +1,110 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AnalyzingOverlay from "@/components/AnalyzingOverlay";
+import FoodItemCard from "@/components/FoodItemCard";
+import { scaleMacrosFromGrams } from "@/lib/portion-scale";
 
-const colors = {
-  bg: "#0b1220",
-  card: "#ffffff",
-  soft: "#f3f4f6",
-  text: "#0f172a",
-  muted: "#64748b",
-  purple: "#7c3aed",
-  purple2: "#4f46e5",
-  border: "rgba(15, 23, 42, 0.10)",
-  dangerBg: "#fef2f2",
-  dangerText: "#b91c1c",
-  successBg: "#f0fdf4",
-  successText: "#166534",
-};
+function newId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
-export default function CameraCapture({ onMealLogged }) {
+function createEditableFromItem(it) {
+  const grams = Math.max(1, Math.round(Number(it.portion_grams) || 100));
+  return {
+    id: newId(),
+    food_name: String(it.food_name || "").trim() || "Food",
+    portion_display: String(it.portion_display || "").trim() || `${grams} g`,
+    grams,
+    calories: Math.round(Number(it.calories) || 0),
+    protein: round1(Number(it.protein) || 0),
+    fat: round1(Number(it.fat) || 0),
+    carbs: round1(Number(it.carbs) || 0),
+    fiber: round1(Number(it.fiber) || 0),
+    confidence: Math.min(100, Math.max(0, Math.round(Number(it.confidence) || 0))),
+    ai_food_name: String(it.food_name || "").trim(),
+    ai_grams: grams,
+    ai_calories: Math.round(Number(it.calories) || 0),
+    ai_protein: round1(Number(it.protein) || 0),
+    ai_fat: round1(Number(it.fat) || 0),
+    ai_carbs: round1(Number(it.carbs) || 0),
+    ai_fiber: round1(Number(it.fiber) || 0),
+    ai_confidence: Math.min(100, Math.max(0, Math.round(Number(it.confidence) || 0))),
+  };
+}
+
+function createManualItem() {
+  return {
+    id: newId(),
+    food_name: "",
+    portion_display: "",
+    grams: 100,
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+    fiber: 0,
+    confidence: 100,
+    ai_food_name: null,
+    ai_grams: null,
+    ai_calories: null,
+    ai_protein: null,
+    ai_fat: null,
+    ai_carbs: null,
+    ai_fiber: null,
+    ai_confidence: null,
+  };
+}
+
+function round1(n) {
+  return Math.round(Number(n) * 10) / 10;
+}
+
+function meanConfidence(items) {
+  if (!items.length) return 0;
+  const nums = items.map((i) => Number(i.confidence) || 0).filter((n) => n >= 0);
+  if (!nums.length) return 0;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function sumTotals(items) {
+  return items.reduce(
+    (acc, it) => ({
+      calories: acc.calories + (Number(it.calories) || 0),
+      protein: acc.protein + (Number(it.protein) || 0),
+      fat: acc.fat + (Number(it.fat) || 0),
+      carbs: acc.carbs + (Number(it.carbs) || 0),
+      fiber: acc.fiber + (Number(it.fiber) || 0),
+    }),
+    { calories: 0, protein: 0, fat: 0, carbs: 0, fiber: 0 }
+  );
+}
+
+export default function CameraCapture({
+  onMealLogged,
+  logDate,
+  calorieGoal = 2000,
+  dayCaloriesBeforeMeal = 0,
+}) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
+  const [step, setStep] = useState("start");
+  const [tipsVisible, setTipsVisible] = useState(true);
   const [cameraActive, setCameraActive] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [food, setFood] = useState(null);
-  const [error, setError] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
+  const [parseWarning, setParseWarning] = useState(null);
+  const [photoQualityNote, setPhotoQualityNote] = useState(null);
+  const [mealSummary, setMealSummary] = useState("");
+  const [items, setItems] = useState([]);
   const [logging, setLogging] = useState(false);
-  const [success, setSuccess] = useState(null);
+  const [successInfo, setSuccessInfo] = useState(null);
+  const [libraryFoods, setLibraryFoods] = useState([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [manualFood, setManualFood] = useState({ name: "", cal: "", p: "", f: "", c: "", fib: "" });
 
   useEffect(() => {
     return () => {
@@ -38,11 +115,56 @@ export default function CameraCapture({ onMealLogged }) {
     };
   }, []);
 
-  async function startCamera() {
-    setError(null);
-    setFood(null);
-    setLoading(false);
+  useEffect(() => {
+    if (step !== "camera" || !tipsVisible) return undefined;
+    const t = setTimeout(() => setTipsVisible(false), 3000);
+    return () => clearTimeout(t);
+  }, [step, tipsVisible]);
 
+  useEffect(() => {
+    if (step !== "review" || !addOpen) return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/past-foods", { credentials: "include", headers: { Accept: "application/json" } });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && Array.isArray(j.items)) setLibraryFoods(j.items);
+      } catch {
+        setLibraryFoods([]);
+      }
+    })();
+  }, [step, addOpen]);
+
+  useEffect(() => {
+    if (successInfo) {
+      const t = setTimeout(() => {
+        setSuccessInfo(null);
+        resetToStart();
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [successInfo]);
+
+  function resetToStart() {
+    setStep("start");
+    setCameraActive(false);
+    setCapturedImage(null);
+    setAnalysisError(null);
+    setParseWarning(null);
+    setPhotoQualityNote(null);
+    setMealSummary("");
+    setItems([]);
+    setTipsVisible(true);
+    setAddOpen(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }
+
+  async function startCamera() {
+    setAnalysisError(null);
+    setParseWarning(null);
     try {
       const isLocalhost =
         typeof window !== "undefined" &&
@@ -55,30 +177,27 @@ export default function CameraCapture({ onMealLogged }) {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("Camera not supported in this browser.");
       }
-
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
-
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" } },
         audio: false,
       });
-
       streamRef.current = stream;
       setCameraActive(true);
+      setStep("camera");
     } catch (e) {
-      console.error("startCamera error:", e);
       let message = e?.message || "Failed to start camera.";
       if (e?.name === "NotAllowedError") {
-        message = "Camera permission denied. Please allow camera access in your browser settings.";
+        message = "Camera access denied. Please allow camera access in your browser settings.";
       } else if (e?.name === "NotFoundError") {
         message = "No camera found on this device.";
       } else if (e?.name === "NotReadableError") {
         message = "Camera is already in use by another application.";
       }
-      setError(message);
+      setAnalysisError(message);
       setCameraActive(false);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
@@ -87,39 +206,19 @@ export default function CameraCapture({ onMealLogged }) {
     }
   }
 
-  // Attach stream to video element after render (when cameraActive becomes true)
   useEffect(() => {
     if (cameraActive && streamRef.current && videoRef.current) {
       const video = videoRef.current;
       video.srcObject = streamRef.current;
-      video.play().catch((err) => {
-        console.warn("Video play failed:", err);
-      });
+      video.play().catch(() => {});
     }
   }, [cameraActive]);
 
-  async function capturePhoto() {
-    setError(null);
-    setLoading(true);
-    setFood(null);
-
-    try {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (!video || !canvas) throw new Error("Camera not ready.");
-
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      if (!w || !h) throw new Error("Camera is not ready yet.");
-
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Unable to capture photo.");
-      ctx.drawImage(video, 0, 0, w, h);
-
-      const imageBase64 = canvas.toDataURL("image/jpeg", 0.9);
-
+  const runAnalyze = useCallback(
+    async (imageBase64) => {
+      setAnalysisError(null);
+      setParseWarning(null);
+      setPhotoQualityNote(null);
       const res = await fetch("/api/analyze-food", {
         method: "POST",
         credentials: "include",
@@ -127,285 +226,549 @@ export default function CameraCapture({ onMealLogged }) {
         body: JSON.stringify({ imageBase64 }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Analyze failed.");
+      if (!res.ok) throw new Error(data?.error || "Analysis failed. Please try again.");
+      if (data.parse_warning) setParseWarning(data.parse_warning);
+      if (data.photo_quality_note) setPhotoQualityNote(data.photo_quality_note);
 
-      setFood(data);
+      const rawItems = Array.isArray(data.items) ? data.items : [];
+      if (rawItems.length === 0) {
+        setParseWarning(
+          data.parse_warning ||
+            "Couldn't identify any food in this image. Try taking a clearer photo with better lighting."
+        );
+        setItems([]);
+        setMealSummary(typeof data.meal_summary === "string" ? data.meal_summary : "");
+        setStep("review");
+        return;
+      }
 
+      setItems(rawItems.map((it) => createEditableFromItem(it)));
+      setMealSummary(
+        typeof data.meal_summary === "string" && data.meal_summary.trim()
+          ? data.meal_summary.trim()
+          : rawItems.map((x) => x.food_name).join(", ")
+      );
+      setStep("review");
+    },
+    []
+  );
+
+  async function capturePhoto() {
+    setAnalysisError(null);
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas) throw new Error("Camera not ready.");
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) throw new Error("Camera is not ready yet.");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Unable to capture photo.");
+      ctx.drawImage(video, 0, 0, w, h);
+      const imageBase64 = canvas.toDataURL("image/jpeg", 0.9);
+      setCapturedImage(imageBase64);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
       setCameraActive(false);
+      setStep("analyzing");
+      await runAnalyze(imageBase64);
     } catch (e) {
-      setError(e?.message || "Failed to analyze image.");
-    } finally {
-      setLoading(false);
+      setAnalysisError(e?.message || "Analysis failed. Please try again.");
+      setStep("error");
     }
   }
 
-  async function logMeal() {
-    setError(null);
+  function handleGramsChange(id, newGrams) {
+    const g = Math.max(1, Math.round(Number(newGrams) || 1));
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id !== id) return it;
+        if (it.ai_grams == null || it.ai_grams <= 0) {
+          return { ...it, grams: g };
+        }
+        const scaled = scaleMacrosFromGrams(it.ai_grams, g, {
+          calories: it.ai_calories,
+          protein: it.ai_protein,
+          fat: it.ai_fat,
+          carbs: it.ai_carbs,
+          fiber: it.ai_fiber ?? 0,
+        });
+        return {
+          ...it,
+          grams: g,
+          calories: scaled.calories,
+          protein: scaled.protein,
+          fat: scaled.fat,
+          carbs: scaled.carbs,
+          fiber: scaled.fiber,
+        };
+      })
+    );
+  }
+
+  function updateItem(id, next) {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...next } : it)));
+  }
+
+  function removeItem(id) {
+    setItems((prev) => prev.filter((it) => it.id !== id));
+  }
+
+  function addManualBlank() {
+    setItems((prev) => [...prev, createManualItem()]);
+    setAddOpen(false);
+  }
+
+  function addFromLibrary(entry) {
+    const grams = 100;
+    const it = {
+      id: newId(),
+      food_name: entry.food_name,
+      portion_display: entry.portion || `${grams} g`,
+      grams,
+      calories: Math.round(Number(entry.calories) || 0),
+      protein: round1(Number(entry.protein) || 0),
+      fat: round1(Number(entry.fat) || 0),
+      carbs: round1(Number(entry.carbs) || 0),
+      fiber: 0,
+      confidence: 100,
+      ai_food_name: null,
+      ai_grams: null,
+      ai_calories: null,
+      ai_protein: null,
+      ai_fat: null,
+      ai_carbs: null,
+      ai_fiber: null,
+      ai_confidence: null,
+    };
+    setItems((prev) => [...prev, it]);
+    setAddOpen(false);
+  }
+
+  function submitManualQuick() {
+    const cals = parseFloat(manualFood.cal);
+    const p = parseFloat(manualFood.p);
+    const f = parseFloat(manualFood.f);
+    const cb = parseFloat(manualFood.c);
+    const fib = parseFloat(manualFood.fib || "0");
+    const name = manualFood.name.trim();
+    if (!name || !Number.isFinite(cals)) return;
+    const it = {
+      id: newId(),
+      food_name: name,
+      portion_display: "manual",
+      grams: 100,
+      calories: Math.round(cals),
+      protein: Number.isFinite(p) ? round1(p) : 0,
+      fat: Number.isFinite(f) ? round1(f) : 0,
+      carbs: Number.isFinite(cb) ? round1(cb) : 0,
+      fiber: Number.isFinite(fib) ? round1(fib) : 0,
+      confidence: 100,
+      ai_food_name: null,
+      ai_grams: null,
+      ai_calories: null,
+      ai_protein: null,
+      ai_fat: null,
+      ai_carbs: null,
+      ai_fiber: null,
+      ai_confidence: null,
+    };
+    setItems((prev) => [...prev, it]);
+    setManualFood({ name: "", cal: "", p: "", f: "", c: "", fib: "" });
+    setAddOpen(false);
+  }
+
+  async function confirmLog() {
+    if (!logDate) {
+      setAnalysisError("Missing date — refresh the page.");
+      return;
+    }
+    const totals = sumTotals(items);
+    if (items.length === 0 || totals.calories <= 0) {
+      setAnalysisError("Add at least one food item with calories.");
+      return;
+    }
+
     setLogging(true);
-
+    setAnalysisError(null);
     try {
-      if (!food) throw new Error("No food data to log.");
-
-      const todayISO = new Date().toISOString().split("T")[0];
-      const mealData = {
-        date: todayISO,
-        food_name: food.food_name,
-        portion: food.portion || null,
-        calories: Number(food.calories) || 0,
-        protein: Number(food.protein) || 0,
-        fat: Number(food.fat) || 0,
-        carbs: Number(food.carbs) || 0,
-      };
+      const mealItems = items.map((it) => ({
+        food_name: it.food_name.trim(),
+        portion: it.portion_display?.trim() || null,
+        calories: Math.max(0, Math.round(Number(it.calories) || 0)),
+        protein: Math.max(0, Number(it.protein) || 0),
+        fat: Math.max(0, Number(it.fat) || 0),
+        carbs: Math.max(0, Number(it.carbs) || 0),
+        fiber: Math.max(0, Number(it.fiber) || 0),
+        ai_food_name: it.ai_food_name,
+        ai_calories: it.ai_calories,
+        ai_protein: it.ai_protein,
+        ai_fat: it.ai_fat,
+        ai_carbs: it.ai_carbs,
+        ai_confidence: it.ai_confidence,
+      }));
 
       const res = await fetch("/api/meals", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mealData),
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ date: logDate, items: mealItems }),
       });
-
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to log meal.");
 
-      setSuccess(`"${food.food_name}" logged to today's meals!`);
-      setFood(null);
-
-      if (onMealLogged) {
-        onMealLogged();
-      }
-
-      setTimeout(() => setSuccess(null), 3000);
+      const addedCals = Math.round(totals.calories);
+      const newDay = Math.round(dayCaloriesBeforeMeal + addedCals);
+      const goal = Math.max(1, Math.round(Number(calorieGoal) || 2000));
+      setSuccessInfo({
+        addedCals,
+        newDay,
+        goal,
+      });
+      onMealLogged?.();
+      setStep("success");
     } catch (e) {
-      setError(e?.message || "Failed to log meal.");
+      setAnalysisError(e?.message || "Failed to log meal.");
     } finally {
       setLogging(false);
     }
   }
 
-  function captureAnother() {
-    setFood(null);
-    setError(null);
-    setLoading(false);
-    setSuccess(null);
-    setCameraActive(false);
-  }
+  const overall = useMemo(() => meanConfidence(items), [items]);
+  const totals = useMemo(() => sumTotals(items), [items]);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: 720,
-        margin: "0 auto",
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: colors.card,
-          border: `1px solid ${colors.border}`,
-          borderRadius: 16,
-          padding: 16,
-          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: colors.text }}>Food Recognition</div>
-            <div style={{ marginTop: 4, fontSize: 14, color: colors.muted }}>
-              Take a photo and analyze it with AI.
+    <div className="w-full max-w-xl mx-auto px-1 sm:px-2">
+      {analysisError && step !== "camera" && step !== "analyzing" ? (
+        <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-800 ring-1 ring-red-200">
+          {analysisError}
+          {step === "error" && capturedImage ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAnalysisError(null);
+                  setStep("analyzing");
+                  void (async () => {
+                    try {
+                      await runAnalyze(capturedImage);
+                    } catch (e) {
+                      setAnalysisError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
+                      setStep("error");
+                    }
+                  })();
+                }}
+                className="rounded-lg bg-red-900 px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                Retry
+              </button>
             </div>
-          </div>
+          ) : null}
         </div>
+      ) : null}
 
-        {error ? (
-          <div
-            style={{
-              marginTop: 12,
-              background: colors.dangerBg,
-              color: colors.dangerText,
-              border: "1px solid rgba(185, 28, 28, 0.20)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            {error}
+      {step === "success" && successInfo ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-3xl text-white shadow-lg">
+            ✓
           </div>
-        ) : null}
+          <p className="mt-4 text-lg font-bold text-emerald-900">Meal logged</p>
+          <p className="mt-2 text-sm text-emerald-800">
+            {successInfo.addedCals.toLocaleString()} cal added — you&apos;re at{" "}
+            <span className="font-bold">{successInfo.newDay.toLocaleString()}</span> / {successInfo.goal.toLocaleString()}{" "}
+            for today
+          </p>
+        </div>
+      ) : null}
 
-        {success ? (
+      {step === "start" ? (
+        <button
+          type="button"
+          onClick={startCamera}
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+        >
+          Start camera
+        </button>
+      ) : null}
+
+      {step === "camera" ? (
+        <div>
           <div
-            style={{
-              marginTop: 12,
-              background: colors.successBg,
-              color: colors.successText,
-              border: "1px solid rgba(22, 101, 52, 0.20)",
-              borderRadius: 12,
-              padding: "10px 12px",
-              fontSize: 14,
-              fontWeight: 600,
-            }}
+            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-inner"
+            onClick={() => setTipsVisible(false)}
+            role="presentation"
           >
-            ✓ {success}
+            <video ref={videoRef} playsInline muted className="h-64 w-full object-cover sm:h-80" />
+            {tipsVisible ? (
+              <div className="pointer-events-none absolute left-0 right-0 top-0 bg-black/35 px-3 py-2 text-center">
+                <p className="text-[11px] font-medium text-white/95">Center the food in frame · Good lighting helps</p>
+                <p className="text-[11px] text-white/90">Include the full plate</p>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-
-        {!cameraActive && !food ? (
           <button
-            onClick={startCamera}
-            style={{
-              width: "100%",
-              marginTop: 14,
-              borderRadius: 12,
-              padding: "12px 14px",
-              fontSize: 14,
-              fontWeight: 800,
-              border: `1px solid ${colors.border}`,
-              background: "#fff",
-              color: colors.text,
-            }}
+            type="button"
+            onClick={capturePhoto}
+            className="mt-3 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-violet-700"
           >
-            Start Camera
+            Capture &amp; analyze
           </button>
-        ) : null}
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      ) : null}
 
-        {cameraActive ? (
-          <div style={{ marginTop: 14 }}>
-            <div
-              style={{
-                borderRadius: 16,
-                overflow: "hidden",
-                background: "#000",
-                border: `1px solid ${colors.border}`,
-              }}
-            >
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                style={{ width: "100%", height: 320, objectFit: "cover", display: "block" }}
+      {step === "analyzing" && capturedImage ? <AnalyzingOverlay imageSrc={capturedImage} /> : null}
+
+      {step === "review" ? (
+        <div className="space-y-4">
+          {capturedImage ? (
+            <img
+              src={capturedImage}
+              alt="Your meal"
+              className="h-24 w-24 rounded-xl object-cover ring-2 ring-slate-200 shadow-sm"
+            />
+          ) : null}
+
+          <label className="block">
+            <span className="text-xs font-semibold text-slate-600">Meal name</span>
+            <input
+              type="text"
+              value={mealSummary}
+              onChange={(e) => setMealSummary(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium"
+            />
+          </label>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+            <div className="flex justify-between text-slate-600">
+              <span>Overall confidence</span>
+              <span className="font-bold text-slate-900">{Math.round(overall)}%</span>
+            </div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-full rounded-full bg-violet-600 transition-all"
+                style={{ width: `${Math.min(100, overall)}%` }}
               />
             </div>
-
-            <button
-              onClick={capturePhoto}
-              disabled={loading}
-              style={{
-                width: "100%",
-                marginTop: 12,
-                borderRadius: 12,
-                padding: "12px 14px",
-                fontSize: 14,
-                fontWeight: 900,
-                border: "0",
-                background: `linear-gradient(90deg, ${colors.purple}, ${colors.purple2})`,
-                color: "#fff",
-                opacity: loading ? 0.7 : 1,
-              }}
-            >
-              {loading ? "Analyzing..." : "Next"}
-            </button>
-
-            <canvas ref={canvasRef} style={{ display: "none" }} />
           </div>
-        ) : null}
 
-        {food ? (
-          <div style={{ marginTop: 14 }}>
-            <div
-              style={{
-                background: colors.soft,
-                borderRadius: 16,
-                padding: 14,
-                border: `1px solid ${colors.border}`,
-              }}
+          {overall < 70 && items.length > 0 ? (
+            <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 ring-1 ring-amber-200">
+              ⚠ Some items may be inaccurate. Please review and edit before logging.
+            </div>
+          ) : null}
+          {overall >= 80 && items.length > 0 ? (
+            <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 ring-1 ring-emerald-200">
+              ✓ Analysis looks good!
+            </div>
+          ) : null}
+
+          {parseWarning ? (
+            <div className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-950 ring-1 ring-amber-200">{parseWarning}</div>
+          ) : null}
+          {photoQualityNote ? (
+            <div className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-800 ring-1 ring-slate-200">
+              Photo: {photoQualityNote}
+              <span className="mt-1 block text-xs text-slate-600">Consider retaking with better lighting or focus.</span>
+            </div>
+          ) : null}
+
+          <div className="space-y-3">
+            {items.map((it) => (
+              <FoodItemCard
+                key={it.id}
+                item={it}
+                disabled={logging}
+                onChange={(next) => updateItem(it.id, next)}
+                onGramsChange={(g) => handleGramsChange(it.id, g)}
+                onRemove={() => removeItem(it.id)}
+              />
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-3">
+            <button
+              type="button"
+              onClick={() => setAddOpen((v) => !v)}
+              className="text-sm font-semibold text-violet-700 hover:text-violet-900"
             >
-              <div style={{ fontSize: 16, fontWeight: 900, color: colors.text }}>{food.food_name}</div>
-              <div style={{ marginTop: 4, fontSize: 14, color: colors.muted }}>{food.portion}</div>
-
-              <div
-                style={{
-                  marginTop: 12,
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                  gap: 10,
-                }}
-              >
-                <Metric label="Calories" value={food.calories} unit="kcal" />
-                <Metric label="Protein" value={food.protein} unit="g" />
-                <Metric label="Fat" value={food.fat} unit="g" />
-                <Metric label="Carbs" value={food.carbs} unit="g" />
+              + Add another item
+            </button>
+            {addOpen ? (
+              <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={addManualBlank}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold"
+                  >
+                    Empty row (edit all)
+                  </button>
+                </div>
+                {libraryFoods.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600">Food library</p>
+                    <div className="mt-2 max-h-36 space-y-1 overflow-y-auto">
+                      {libraryFoods.slice(0, 12).map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => addFromLibrary(f)}
+                          className="flex w-full justify-between rounded-lg px-2 py-1.5 text-left text-xs hover:bg-violet-50"
+                        >
+                          <span className="font-medium text-slate-800">{f.food_name}</span>
+                          <span className="text-slate-500">{Math.round(f.calories)} kcal</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    placeholder="Name"
+                    value={manualFood.name}
+                    onChange={(e) => setManualFood((s) => ({ ...s, name: e.target.value }))}
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Calories"
+                    inputMode="numeric"
+                    value={manualFood.cal}
+                    onChange={(e) => setManualFood((s) => ({ ...s, cal: e.target.value }))}
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Protein g"
+                    inputMode="decimal"
+                    value={manualFood.p}
+                    onChange={(e) => setManualFood((s) => ({ ...s, p: e.target.value }))}
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Fat g"
+                    inputMode="decimal"
+                    value={manualFood.f}
+                    onChange={(e) => setManualFood((s) => ({ ...s, f: e.target.value }))}
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Carbs g"
+                    inputMode="decimal"
+                    value={manualFood.c}
+                    onChange={(e) => setManualFood((s) => ({ ...s, c: e.target.value }))}
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Fiber g"
+                    inputMode="decimal"
+                    value={manualFood.fib}
+                    onChange={(e) => setManualFood((s) => ({ ...s, fib: e.target.value }))}
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={submitManualQuick}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Add manual entry
+                </button>
               </div>
+            ) : null}
+          </div>
 
-              <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                <button
-                  onClick={logMeal}
-                  disabled={logging}
-                  style={{
-                    flex: "1 1 auto",
-                    borderRadius: 12,
-                    padding: "12px 14px",
-                    fontSize: 14,
-                    fontWeight: 900,
-                    border: "0",
-                    background: "#0f172a",
-                    color: "#fff",
-                    opacity: logging ? 0.7 : 1,
-                    cursor: logging ? "not-allowed" : "pointer",
-                    minWidth: "120px",
-                  }}
-                >
-                  {logging ? "Logging..." : "Log This Meal"}
-                </button>
-                <button
-                  onClick={captureAnother}
-                  disabled={logging}
-                  style={{
-                    flex: "1 1 auto",
-                    borderRadius: 12,
-                    padding: "12px 14px",
-                    fontSize: 14,
-                    fontWeight: 900,
-                    border: `1px solid ${colors.border}`,
-                    background: "#fff",
-                    color: colors.text,
-                    cursor: logging ? "not-allowed" : "pointer",
-                    opacity: logging ? 0.6 : 1,
-                    minWidth: "120px",
-                  }}
-                >
-                  Capture Another
-                </button>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Totals</p>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
+              <div>
+                <span className="text-slate-500">Cal</span>
+                <div className="font-bold text-slate-900">{Math.round(totals.calories)}</div>
+              </div>
+              <div>
+                <span className="text-slate-500">P</span>
+                <div className="font-bold">{round1(totals.protein)} g</div>
+              </div>
+              <div>
+                <span className="text-slate-500">F</span>
+                <div className="font-bold">{round1(totals.fat)} g</div>
+              </div>
+              <div>
+                <span className="text-slate-500">C</span>
+                <div className="font-bold">{round1(totals.carbs)} g</div>
+              </div>
+              <div>
+                <span className="text-slate-500">Fiber</span>
+                <div className="font-bold">{round1(totals.fiber)} g</div>
               </div>
             </div>
           </div>
-        ) : null}
-      </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              disabled={logging}
+              onClick={confirmLog}
+              className="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50"
+            >
+              {logging ? "Logging…" : "Confirm & log meal"}
+            </button>
+            <button
+              type="button"
+              disabled={logging}
+              onClick={() => {
+                resetToStart();
+                void startCamera();
+              }}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
+            >
+              Retake photo
+            </button>
+            <button
+              type="button"
+              disabled={logging}
+              onClick={resetToStart}
+              className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {step === "error" && capturedImage ? (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600">Analysis failed. Please try again.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setAnalysisError(null);
+              setStep("analyzing");
+              void (async () => {
+                try {
+                  await runAnalyze(capturedImage);
+                } catch (e) {
+                  setAnalysisError(e instanceof Error ? e.message : "Analysis failed. Please try again.");
+                  setStep("error");
+                }
+              })();
+            }}
+            className="w-full rounded-xl bg-violet-600 py-3 text-sm font-bold text-white"
+          >
+            Retry analysis
+          </button>
+          <button type="button" onClick={resetToStart} className="w-full text-sm font-semibold text-slate-600">
+            Cancel
+          </button>
+        </div>
+      ) : null}
+
+      {step === "analyzing" ? (
+        <p className="mt-2 text-center text-xs text-slate-500">Working on your photo…</p>
+      ) : null}
     </div>
   );
 }
-
-function Metric({ label, value, unit }) {
-  return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 14,
-        border: `1px solid ${colors.border}`,
-        padding: 12,
-      }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 800, color: colors.muted }}>{label}</div>
-      <div style={{ marginTop: 4, fontSize: 18, fontWeight: 950, color: colors.text }}>
-        {Number.isFinite(Number(value)) ? value : 0}{" "}
-        <span style={{ fontSize: 12, fontWeight: 800, color: colors.muted }}>{unit}</span>
-      </div>
-    </div>
-  );
-}
-

@@ -7,3 +7,24 @@ body {
   height: 100%;
 }
 
+@keyframes calorai-scan {
+  0% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(260px);
+    opacity: 0.25;
+  }
+}
+
+.animate-calorai-scan {
+  animation: calorai-scan 2.2s ease-in-out infinite;
+}
+

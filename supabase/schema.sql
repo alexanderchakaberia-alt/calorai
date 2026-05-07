@@ -13,7 +13,7 @@ create table if not exists daily_goals (
   calorie_goal numeric not null default 2000,
   protein_goal numeric not null default 150,
   fat_goal numeric not null default 65,
-  carbs_goal numeric not null default 225,
+  carbs_goal numeric not null default 250,
   fiber_goal numeric not null default 30,
   unique(user_id)
 );
@@ -27,6 +27,13 @@ create table if not exists meal_logs (
   protein numeric not null default 0,
   fat numeric not null default 0,
   carbs numeric not null default 0,
+  fiber numeric not null default 0,
+  ai_food_name text,
+  ai_calories numeric,
+  ai_protein numeric,
+  ai_fat numeric,
+  ai_carbs numeric,
+  ai_confidence numeric,
   logged_at timestamp default now()
 );
 

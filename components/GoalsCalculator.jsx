@@ -9,7 +9,8 @@ import {
 } from "@/lib/nutrition-calculator";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-const LS_KEY = "calorai-goals-complete";
+/** localStorage: set to "1" after user saves goals from this wizard */
+export const CALORAI_GOALS_LS_KEY = "calorai-goals-complete";
 
 const ACTIVITY_OPTIONS = [
   { key: "sedentary", label: "Sedentary (little/no exercise)", multiplier: ACTIVITY_MULTIPLIERS.sedentary },
@@ -32,7 +33,12 @@ function parseNum(v, min, max, fallback = "") {
   return Math.min(max, Math.max(min, n));
 }
 
-export default function GoalsCalculator({ onSuccess, defaultTab = "manual" }) {
+export default function GoalsCalculator({
+  onSuccess,
+  defaultTab = "manual",
+  isModal = false,
+  onDismiss,
+}) {
   const [tab, setTab] = useState(defaultTab === "calc" ? "calc" : "manual");
 
   const [manualCal, setManualCal] = useState("");
@@ -64,7 +70,7 @@ export default function GoalsCalculator({ onSuccess, defaultTab = "manual" }) {
   useEffect(() => {
     setMounted(true);
     if (typeof window !== "undefined") {
-      setWizardDone(localStorage.getItem(LS_KEY) === "1");
+      setWizardDone(localStorage.getItem(CALORAI_GOALS_LS_KEY) === "1");
     }
   }, []);
 
@@ -180,7 +186,7 @@ export default function GoalsCalculator({ onSuccess, defaultTab = "manual" }) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j?.error || "Save failed.");
       if (typeof window !== "undefined") {
-        localStorage.setItem(LS_KEY, "1");
+        localStorage.setItem(CALORAI_GOALS_LS_KEY, "1");
         setWizardDone(true);
       }
       setSaveMsg({ type: "ok", text: "Goals saved. Your tracker will use these targets." });
@@ -239,16 +245,35 @@ export default function GoalsCalculator({ onSuccess, defaultTab = "manual" }) {
     }
   };
 
-  const onboardingBanner = mounted && wizardDone === false;
+  const onboardingBanner = !isModal && mounted && wizardDone === false;
 
   return (
     <div
       className={
-        onboardingBanner
-          ? "mb-6 rounded-2xl border-2 border-violet-300 bg-violet-50/80 p-4 sm:p-6 shadow-sm"
-          : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+        isModal
+          ? "p-0 sm:p-1"
+          : onboardingBanner
+            ? "mb-6 rounded-2xl border-2 border-violet-300 bg-violet-50/80 p-4 sm:p-6 shadow-sm"
+            : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
       }
     >
+      {isModal ? (
+        <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-200 pb-3">
+          <h2 id="goals-dialog-title" className="text-lg font-bold text-slate-900">
+            Daily goals
+          </h2>
+          <button
+            type="button"
+            onClick={() => onDismiss?.()}
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      ) : null}
       {onboardingBanner ? (
         <p className="mb-3 text-sm font-semibold text-violet-900">Set your daily goals to unlock the full tracker</p>
       ) : null}

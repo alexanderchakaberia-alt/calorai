@@ -9,7 +9,7 @@ const DEFAULTS = Object.freeze({
   calorie_goal: 2000,
   protein_goal: 150,
   fat_goal: 65,
-  carbs_goal: 225,
+  carbs_goal: 250,
   fiber_goal: 30,
 });
 
@@ -28,6 +28,13 @@ function mapMeal(row: Record<string, unknown>): MealEntry {
     protein: toNumber(row.protein),
     fat: toNumber(row.fat),
     carbs: toNumber(row.carbs),
+    fiber: row.fiber !== undefined && row.fiber !== null ? toNumber(row.fiber) : undefined,
+    ai_food_name: (row.ai_food_name as string | null) ?? undefined,
+    ai_calories: row.ai_calories !== undefined && row.ai_calories !== null ? toNumber(row.ai_calories) : undefined,
+    ai_protein: row.ai_protein !== undefined && row.ai_protein !== null ? toNumber(row.ai_protein) : undefined,
+    ai_fat: row.ai_fat !== undefined && row.ai_fat !== null ? toNumber(row.ai_fat) : undefined,
+    ai_carbs: row.ai_carbs !== undefined && row.ai_carbs !== null ? toNumber(row.ai_carbs) : undefined,
+    ai_confidence: row.ai_confidence !== undefined && row.ai_confidence !== null ? toNumber(row.ai_confidence) : undefined,
     logged_at: row.logged_at as string,
   };
 }
@@ -71,9 +78,8 @@ function nextCalendarDayUTC(date: ISODateString): ISODateString {
 async function ensureUser(userId: string): Promise<void> {
   assertClerkUserId(userId);
   const supabase = getSupabaseForClerkUser(userId);
-  await supabase
-    .from("users")
-    .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
+  const { error } = await supabase.from("users").upsert({ id: userId }, { onConflict: "id" });
+  if (error) throw new Error(`Failed to ensure user row: ${error.message}`);
 }
 
 /**
@@ -88,22 +94,36 @@ export async function getDailyGoals(userId: string): Promise<DailyGoals> {
   const supabase = getSupabaseForClerkUser(userId);
   await ensureUser(userId);
 
-  const { data } = await supabase
+  const { data: existing, error: readErr } = await supabase
     .from("daily_goals")
     .select("*")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
-  if (data) return mapGoals(data);
+  if (readErr) throw new Error(readErr.message);
+  if (existing) return mapGoals(existing);
 
-  const { data: created, error } = await supabase
+  const { data: created, error: insErr } = await supabase
     .from("daily_goals")
     .insert({ user_id: userId, ...DEFAULTS })
     .select()
     .single();
 
-  if (error || !created) throw new Error("Failed to create daily goals.");
-  return mapGoals(created);
+  if (created) return mapGoals(created);
+
+  const msg = insErr?.message ?? "Failed to create daily goals.";
+  const code = (insErr as { code?: string } | undefined)?.code;
+  if (code === "23505" || /duplicate key|unique constraint/i.test(msg)) {
+    const { data: retry, error: retryErr } = await supabase
+      .from("daily_goals")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (retryErr) throw new Error(retryErr.message);
+    if (retry) return mapGoals(retry);
+  }
+
+  throw new Error(msg);
 }
 
 export async function upsertDailyGoals(
@@ -275,29 +295,41 @@ export async function setPastFoodFavorite(userId: string, pastFoodId: string, fa
   return mapPastFood(data);
 }
 
-export async function addMealEntry(
-  userId: string,
-  date: ISODateString,
-  meal: Pick<MealEntry, "food_name" | "calories" | "protein" | "fat" | "carbs" | "portion">
-): Promise<MealEntry> {
+export type MealInsertPayload = Pick<MealEntry, "food_name" | "calories" | "protein" | "fat" | "carbs" | "portion"> & {
+  fiber?: number;
+  ai_food_name?: string | null;
+  ai_calories?: number | null;
+  ai_protein?: number | null;
+  ai_fat?: number | null;
+  ai_carbs?: number | null;
+  ai_confidence?: number | null;
+};
+
+export async function addMealEntry(userId: string, date: ISODateString, meal: MealInsertPayload): Promise<MealEntry> {
   assertClerkUserId(userId);
   const supabase = getSupabaseForClerkUser(userId);
   await ensureUser(userId);
 
-  const { data, error } = await supabase
-    .from("meal_logs")
-    .insert({
-      user_id: userId,
-      food_name: meal.food_name.trim(),
-      portion: meal.portion?.trim() || null,
-      calories: Math.max(0, Math.floor(meal.calories)),
-      protein: Math.max(0, toNumber(meal.protein)),
-      fat: Math.max(0, toNumber(meal.fat)),
-      carbs: Math.max(0, toNumber(meal.carbs)),
-      logged_at: new Date(`${date}T12:00:00.000Z`).toISOString(),
-    })
-    .select()
-    .single();
+  const row: Record<string, unknown> = {
+    user_id: userId,
+    food_name: meal.food_name.trim(),
+    portion: meal.portion?.trim() || null,
+    calories: Math.max(0, Math.floor(meal.calories)),
+    protein: Math.max(0, toNumber(meal.protein)),
+    fat: Math.max(0, toNumber(meal.fat)),
+    carbs: Math.max(0, toNumber(meal.carbs)),
+    fiber: meal.fiber !== undefined ? Math.max(0, toNumber(meal.fiber)) : 0,
+    logged_at: new Date(`${date}T12:00:00.000Z`).toISOString(),
+  };
+
+  if ("ai_food_name" in meal) row.ai_food_name = meal.ai_food_name;
+  if ("ai_calories" in meal) row.ai_calories = meal.ai_calories === null || meal.ai_calories === undefined ? null : toNumber(meal.ai_calories);
+  if ("ai_protein" in meal) row.ai_protein = meal.ai_protein === null || meal.ai_protein === undefined ? null : toNumber(meal.ai_protein);
+  if ("ai_fat" in meal) row.ai_fat = meal.ai_fat === null || meal.ai_fat === undefined ? null : toNumber(meal.ai_fat);
+  if ("ai_carbs" in meal) row.ai_carbs = meal.ai_carbs === null || meal.ai_carbs === undefined ? null : toNumber(meal.ai_carbs);
+  if ("ai_confidence" in meal) row.ai_confidence = meal.ai_confidence === null || meal.ai_confidence === undefined ? null : toNumber(meal.ai_confidence);
+
+  const { data, error } = await supabase.from("meal_logs").insert(row).select().single();
 
   if (error || !data) throw new Error(error?.message ?? "Failed to add meal.");
   const entry = mapMeal(data);
@@ -310,6 +342,14 @@ export async function addMealEntry(
   }
 
   return entry;
+}
+
+export async function addMealEntries(userId: string, date: ISODateString, meals: MealInsertPayload[]): Promise<MealEntry[]> {
+  const out: MealEntry[] = [];
+  for (const m of meals) {
+    out.push(await addMealEntry(userId, date, m));
+  }
+  return out;
 }
 
 export async function deleteMealEntry(mealId: string, userId: string): Promise<{ deleted: boolean }> {

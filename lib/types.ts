@@ -29,6 +29,13 @@ export type MealEntry = {
   protein: number;
   fat: number;
   carbs: number;
+  fiber?: number;
+  ai_food_name?: string | null;
+  ai_calories?: number | null;
+  ai_protein?: number | null;
+  ai_fat?: number | null;
+  ai_carbs?: number | null;
+  ai_confidence?: number | null;
   logged_at: string;
 };
 
@@ -48,6 +55,7 @@ export type ApiErrorResponse = {
   code?: string;
 };
 
+/** Single-row log (legacy). */
 export type CreateMealRequest = {
   date: ISODateString;
   food_name: string;
@@ -56,6 +64,35 @@ export type CreateMealRequest = {
   protein: number;
   fat: number;
   carbs: number;
+  fiber?: number;
+  ai_food_name?: string | null;
+  ai_calories?: number | null;
+  ai_protein?: number | null;
+  ai_fat?: number | null;
+  ai_carbs?: number | null;
+  ai_confidence?: number | null;
+};
+
+export type CreateMealItemPayload = {
+  food_name: string;
+  portion?: string | null;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber?: number;
+  ai_food_name?: string | null;
+  ai_calories?: number | null;
+  ai_protein?: number | null;
+  ai_fat?: number | null;
+  ai_carbs?: number | null;
+  ai_confidence?: number | null;
+};
+
+/** Batch log from AI confirmation (multiple `meal_logs` rows). */
+export type CreateMealsBatchRequest = {
+  date: ISODateString;
+  items: CreateMealItemPayload[];
 };
 
 export type UpdateGoalsRequest = {

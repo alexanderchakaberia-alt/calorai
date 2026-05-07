@@ -1,0 +1,9 @@
+-- AI accuracy tracking + per-meal fiber (optional)
+ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS fiber NUMERIC NOT NULL DEFAULT 0;
+
+ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS ai_food_name TEXT;
+ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS ai_calories NUMERIC;
+ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS ai_protein NUMERIC;
+ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS ai_fat NUMERIC;
+ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS ai_carbs NUMERIC;
+ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS ai_confidence NUMERIC;

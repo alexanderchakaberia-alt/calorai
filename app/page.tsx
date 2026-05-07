@@ -1,7 +1,7 @@
 "use client";
 
 import { CalorieTracker } from "@/app/components/CalorieTracker";
-import { Show, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import { Show, SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import React from "react";
 
 export default function Page() {
@@ -13,83 +13,18 @@ export default function Page() {
     "there";
 
   return (
-    <div style={{ padding: "20px", maxWidth: 900, margin: "0 auto" }}>
-      <header
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-          marginBottom: 24,
-          paddingBottom: 16,
-          borderBottom: "1px solid #e2e8f0",
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>Calorie Tracker</h1>
-          <Show when="signed-in">
-            <p style={{ margin: "8px 0 0", color: "#475569", fontSize: 15 }}>
-              Hello, {displayName}
-            </p>
-          </Show>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Show when="signed-out">
-            <SignInButton>
-              <button
-                type="button"
-                style={{
-                  padding: "10px 16px",
-                  fontWeight: 700,
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                Sign In
-              </button>
-            </SignInButton>
-            <SignUpButton>
-              <button
-                type="button"
-                style={{
-                  padding: "10px 16px",
-                  fontWeight: 700,
-                  borderRadius: 8,
-                  border: "none",
-                  background: "linear-gradient(90deg, #7c3aed, #4f46e5)",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                Sign Up
-              </button>
-            </SignUpButton>
-          </Show>
-          <Show when="signed-in">
-            <UserButton />
-          </Show>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-slate-50">
       <Show when="signed-out">
-        <div style={{ textAlign: "center", padding: "40px 16px", color: "#64748b" }}>
-          <p style={{ fontSize: 18, marginBottom: 16 }}>Sign in to track meals with AI.</p>
-          <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+        <div className="mx-auto max-w-lg px-4 py-16">
+          <header className="mb-10 text-center">
+            <h1 className="text-3xl font-black tracking-tight text-slate-900">Calorie Tracker</h1>
+            <p className="mt-3 text-slate-600">Sign in to track meals with AI.</p>
+          </header>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <SignInButton>
               <button
                 type="button"
-                style={{
-                  padding: "10px 16px",
-                  fontWeight: 700,
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
+                className="w-full rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-auto"
               >
                 Sign in
               </button>
@@ -97,15 +32,7 @@ export default function Page() {
             <SignUpButton>
               <button
                 type="button"
-                style={{
-                  padding: "10px 16px",
-                  fontWeight: 700,
-                  borderRadius: 8,
-                  border: "none",
-                  background: "linear-gradient(90deg, #7c3aed, #4f46e5)",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
+                className="w-full rounded-xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 sm:w-auto"
               >
                 Create account
               </button>
@@ -115,8 +42,7 @@ export default function Page() {
       </Show>
 
       <Show when="signed-in">
-        {/* Daily goals calculator (onboarding banner until first save) + tracker */}
-        <CalorieTracker />
+        <CalorieTracker displayName={displayName} />
       </Show>
     </div>
   );
