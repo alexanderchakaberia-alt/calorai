@@ -115,9 +115,43 @@ export type PastFoodEntry = {
   protein: number;
   fat: number;
   carbs: number;
+  fiber?: number;
   last_used_at: string;
   use_count: number;
   favorited: boolean;
+};
+
+export type UpsertPastFoodRequest = {
+  food_name: string;
+  portion?: string | null;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber?: number;
+  favorited: boolean;
+};
+
+export type FoodSearchSource = "usda" | "openfoodfacts";
+
+export type FoodSearchResult = {
+  name: string;
+  source: FoodSearchSource;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  fiber: number;
+  /** Optional barcode (openfoodfacts). */
+  barcode?: string;
+};
+
+export type FoodSearchResponse = {
+  foods: FoodSearchResult[];
+  /** Optional UI hint if we had partial failures. */
+  warning?: string;
 };
 
 export type GetPastFoodsResponse = {

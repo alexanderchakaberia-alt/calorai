@@ -52,6 +52,7 @@ create table if not exists past_foods (
   protein numeric not null default 0,
   fat numeric not null default 0,
   carbs numeric not null default 0,
+  fiber numeric not null default 0,
   last_used_at timestamptz not null default now(),
   use_count integer not null default 1,
   favorited boolean not null default false,

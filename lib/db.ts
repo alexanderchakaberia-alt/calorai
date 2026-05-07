@@ -50,6 +50,7 @@ function mapPastFood(row: Record<string, unknown>): PastFoodEntry {
     protein: toNumber(row.protein),
     fat: toNumber(row.fat),
     carbs: toNumber(row.carbs),
+    fiber: row.fiber !== undefined && row.fiber !== null ? toNumber(row.fiber) : undefined,
     last_used_at: row.last_used_at as string,
     use_count: Math.max(0, Math.floor(toNumber(row.use_count))),
     favorited: Boolean(row.favorited),
@@ -196,7 +197,7 @@ export function foodKeyFromName(foodName: string): string {
  */
 export async function upsertPastFoodFromMeal(
   userId: string,
-  meal: Pick<MealEntry, "food_name" | "calories" | "protein" | "fat" | "carbs" | "portion">
+  meal: Pick<MealEntry, "food_name" | "calories" | "protein" | "fat" | "carbs" | "portion"> & { fiber?: number }
 ): Promise<void> {
   assertClerkUserId(userId);
   const supabase = getSupabaseForClerkUser(userId);
@@ -211,6 +212,7 @@ export async function upsertPastFoodFromMeal(
   const protein = Math.max(0, toNumber(meal.protein));
   const fat = Math.max(0, toNumber(meal.fat));
   const carbs = Math.max(0, toNumber(meal.carbs));
+  const fiber = Math.max(0, toNumber(meal.fiber ?? 0));
   const portion = meal.portion?.trim() || null;
 
   const { data: existing, error: selErr } = await supabase
@@ -235,6 +237,7 @@ export async function upsertPastFoodFromMeal(
         protein,
         fat,
         carbs,
+        fiber,
       })
       .eq("id", existing.id)
       .eq("user_id", userId);
@@ -252,6 +255,7 @@ export async function upsertPastFoodFromMeal(
     protein,
     fat,
     carbs,
+    fiber,
     last_used_at: now,
     use_count: 1,
     favorited: false,
@@ -273,6 +277,50 @@ export async function getPastFoodsForUser(userId: string): Promise<PastFoodEntry
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapPastFood);
+}
+
+/**
+ * Upsert a past food row directly (used for favoriting DB foods before first log).
+ * Does not increment use_count (set to 1 when first created).
+ */
+export async function upsertPastFoodDirect(
+  userId: string,
+  food: Pick<PastFoodEntry, "food_name" | "portion" | "calories" | "protein" | "fat" | "carbs" | "fiber"> & {
+    favorited: boolean;
+  }
+): Promise<PastFoodEntry> {
+  assertClerkUserId(userId);
+  const supabase = getSupabaseForClerkUser(userId);
+  await ensureUser(userId);
+
+  const name = food.food_name.trim();
+  if (!name) throw new Error("food_name is required.");
+
+  const foodKey = foodKeyFromName(name);
+  const now = new Date().toISOString();
+  const row = {
+    user_id: userId,
+    food_name: name,
+    food_key: foodKey,
+    portion: food.portion?.trim() || null,
+    calories: Math.max(0, Math.floor(toNumber(food.calories))),
+    protein: Math.max(0, toNumber(food.protein)),
+    fat: Math.max(0, toNumber(food.fat)),
+    carbs: Math.max(0, toNumber(food.carbs)),
+    fiber: food.fiber !== undefined ? Math.max(0, toNumber(food.fiber)) : 0,
+    last_used_at: now,
+    favorited: Boolean(food.favorited),
+    use_count: 1,
+  };
+
+  const { data, error } = await supabase
+    .from("past_foods")
+    .upsert(row, { onConflict: "user_id,food_key" })
+    .select()
+    .single();
+
+  if (error || !data) throw new Error(error?.message ?? "Failed to upsert past food.");
+  return mapPastFood(data);
 }
 
 export async function setPastFoodFavorite(userId: string, pastFoodId: string, favorited: boolean): Promise<PastFoodEntry> {

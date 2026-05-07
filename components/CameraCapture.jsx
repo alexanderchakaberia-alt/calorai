@@ -105,6 +105,7 @@ export default function CameraCapture({
   const [libraryFoods, setLibraryFoods] = useState([]);
   const [addOpen, setAddOpen] = useState(false);
   const [manualFood, setManualFood] = useState({ name: "", cal: "", p: "", f: "", c: "", fib: "" });
+  const [barcodeBusy, setBarcodeBusy] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -114,6 +115,52 @@ export default function CameraCapture({
       }
     };
   }, []);
+
+  async function scanBarcodePrompt() {
+    if (barcodeBusy) return;
+    const code = (window.prompt("Enter barcode") || "").trim();
+    if (!code) return;
+
+    setBarcodeBusy(true);
+    try {
+      const res = await fetch(`/api/food-search?barcode=${encodeURIComponent(code)}&source=openfoodfacts`, {
+        credentials: "include",
+        headers: { Accept: "application/json" },
+      });
+      const j = await res.json().catch(() => ({}));
+      const foods = j?.foods || [];
+      if (!res.ok || !foods.length) {
+        setAnalysisError("Barcode not found. Try another code.");
+        setStep("error");
+        return;
+      }
+
+      const f = foods[0];
+      const it = createEditableFromItem({
+        food_name: f.name,
+        portion_grams: 100,
+        portion_display: "100 g",
+        calories: f.calories,
+        protein: f.protein,
+        fat: f.fat,
+        carbs: f.carbs,
+        fiber: f.fiber,
+        confidence: 100,
+      });
+
+      setCapturedImage(null);
+      setParseWarning(null);
+      setPhotoQualityNote(null);
+      setMealSummary("Scanned product");
+      setItems([it]);
+      setStep("review");
+    } catch {
+      setAnalysisError("Barcode scan failed. Try again.");
+      setStep("error");
+    } finally {
+      setBarcodeBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (step !== "camera" || !tipsVisible) return undefined;
@@ -486,13 +533,23 @@ export default function CameraCapture({
       ) : null}
 
       {step === "start" ? (
-        <button
-          type="button"
-          onClick={startCamera}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
-        >
-          Start camera
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={startCamera}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+          >
+            Start camera
+          </button>
+          <button
+            type="button"
+            disabled={barcodeBusy}
+            onClick={() => void scanBarcodePrompt()}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            {barcodeBusy ? "Scanning…" : "Scan barcode"}
+          </button>
+        </div>
       ) : null}
 
       {step === "camera" ? (
