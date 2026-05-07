@@ -88,12 +88,18 @@ export default function FoodSelectionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" onClick={onClose}>
-      <div
-        className="calorai-enter flex w-full max-w-[500px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:rounded-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-black/[0.06] p-4 sm:p-5">
+    <div className="fixed inset-0 z-[50]" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 z-[40] bg-black/45" onClick={onClose} />
+
+      <div className="absolute inset-0 z-[50] flex items-end justify-center md:items-center md:p-6">
+        <div
+          className="calorai-enter flex h-[90vh] w-screen flex-col overflow-hidden rounded-t-[20px] bg-white shadow-2xl md:h-auto md:max-h-[85vh] md:w-[90vw] md:max-w-[600px] md:rounded-3xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="md:hidden">
+            <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-black/[0.12]" aria-hidden />
+          </div>
+          <div className="flex items-start justify-between gap-3 border-b border-black/[0.06] px-5 pb-4 pt-3 md:px-6 md:pt-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#636366]">{food.category}</p>
             <h3 className="mt-1 truncate text-lg font-bold text-[#1C1C1E]">{food.name}</h3>
@@ -111,28 +117,29 @@ export default function FoodSelectionModal({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-        </div>
+          </div>
 
-        <div className="max-h-[70vh] overflow-y-auto p-4 sm:p-6">
-          <PortionSelector food={food} quantity={quantity} onQuantityChange={setQuantity} />
-        </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-6">
+            <PortionSelector food={food} quantity={quantity} onQuantityChange={setQuantity} />
+          </div>
 
-        <div className="sticky bottom-0 flex flex-col gap-2 border-t border-black/[0.06] bg-white p-4 sm:flex-row sm:justify-end sm:p-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[48px] rounded-2xl border border-black/[0.08] bg-white px-5 py-3 text-sm font-semibold text-[#1C1C1E] shadow-sm transition hover:bg-calorai-bg active:scale-[0.99]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void addToLog()}
-            className="min-h-[48px] rounded-2xl bg-calorai-primary px-6 py-3 text-sm font-semibold text-white shadow-card transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
-          >
-            {busy ? "Adding…" : "Add to log"}
-          </button>
+          <div className="sticky bottom-0 flex flex-col gap-2 border-t border-black/[0.06] bg-white px-5 py-4 md:flex-row md:justify-end md:px-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[48px] rounded-2xl border border-black/[0.08] bg-white px-5 py-3 text-sm font-semibold text-[#1C1C1E] shadow-sm transition hover:bg-calorai-bg active:scale-[0.99]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void addToLog()}
+              className="min-h-[48px] rounded-2xl bg-calorai-primary px-6 py-3 text-sm font-semibold text-white shadow-card transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
+            >
+              {busy ? "Adding…" : "Add to log"}
+            </button>
+          </div>
         </div>
       </div>
 
