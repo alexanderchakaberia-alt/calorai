@@ -90,6 +90,7 @@ export default function CameraCapture({
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const analyzeAbortRef = useRef(null);
 
   const [step, setStep] = useState("start");
   const [tipsVisible, setTipsVisible] = useState(true);
@@ -109,6 +110,14 @@ export default function CameraCapture({
 
   useEffect(() => {
     return () => {
+      if (analyzeAbortRef.current) {
+        try {
+          analyzeAbortRef.current.abort();
+        } catch {
+          // noop
+        }
+        analyzeAbortRef.current = null;
+      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -203,10 +212,40 @@ export default function CameraCapture({
     setItems([]);
     setTipsVisible(true);
     setAddOpen(false);
+    if (analyzeAbortRef.current) {
+      try {
+        analyzeAbortRef.current.abort();
+      } catch {
+        // noop
+      }
+      analyzeAbortRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
+  }
+
+  function handleRetake() {
+    // Do not stop the camera stream. Just clear analysis + go back to live view.
+    if (analyzeAbortRef.current) {
+      try {
+        analyzeAbortRef.current.abort();
+      } catch {
+        // noop
+      }
+      analyzeAbortRef.current = null;
+    }
+    setCapturedImage(null);
+    setAnalysisError(null);
+    setParseWarning(null);
+    setPhotoQualityNote(null);
+    setMealSummary("");
+    setItems([]);
+    setTipsVisible(true);
+    setAddOpen(false);
+    setStep("camera");
+    setCameraActive(true);
   }
 
   async function startCamera() {
@@ -266,12 +305,32 @@ export default function CameraCapture({
       setAnalysisError(null);
       setParseWarning(null);
       setPhotoQualityNote(null);
-      const res = await fetch("/api/analyze-food", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64 }),
-      });
+      if (analyzeAbortRef.current) {
+        try {
+          analyzeAbortRef.current.abort();
+        } catch {
+          // noop
+        }
+      }
+      const controller = new AbortController();
+      analyzeAbortRef.current = controller;
+
+      let res;
+      try {
+        res = await fetch("/api/analyze-food", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64 }),
+          signal: controller.signal,
+        });
+      } catch (e) {
+        if (e?.name === "AbortError") return; // user cancelled
+        throw e;
+      } finally {
+        analyzeAbortRef.current = null;
+      }
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Analysis failed. Please try again.");
       if (data.parse_warning) setParseWarning(data.parse_warning);
@@ -316,11 +375,8 @@ export default function CameraCapture({
       ctx.drawImage(video, 0, 0, w, h);
       const imageBase64 = canvas.toDataURL("image/jpeg", 0.9);
       setCapturedImage(imageBase64);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-      setCameraActive(false);
+      // Keep stream running so user can retake instantly.
+      setCameraActive(true);
       setStep("analyzing");
       await runAnalyze(imageBase64);
     } catch (e) {
@@ -578,16 +634,32 @@ export default function CameraCapture({
         </div>
       ) : null}
 
-      {step === "analyzing" && capturedImage ? <AnalyzingOverlay imageSrc={capturedImage} /> : null}
+      {step === "analyzing" && capturedImage ? (
+        <div className="space-y-3">
+          <AnalyzingOverlay imageSrc={capturedImage} />
+          <button type="button" onClick={handleRetake} className="w-full text-center text-xs font-semibold text-slate-600 hover:opacity-80">
+            Cancel
+          </button>
+        </div>
+      ) : null}
 
       {step === "review" ? (
         <div className="space-y-4">
           {capturedImage ? (
-            <img
-              src={capturedImage}
-              alt="Your meal"
-              className="h-24 w-24 rounded-xl object-cover ring-2 ring-slate-200 shadow-sm"
-            />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={capturedImage}
+                  alt="Captured meal"
+                  className="h-20 w-20 rounded-xl object-cover ring-2 ring-slate-200 shadow-sm"
+                />
+                <div className="text-xs text-slate-600">
+                  <button type="button" onClick={handleRetake} className="font-semibold text-slate-700 hover:opacity-80">
+                    Retake
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : null}
 
           <label className="block">
@@ -776,21 +848,10 @@ export default function CameraCapture({
             <button
               type="button"
               disabled={logging}
-              onClick={() => {
-                resetToStart();
-                void startCamera();
-              }}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
+              onClick={handleRetake}
+              className="flex-1 min-h-[48px] rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800"
             >
-              Retake photo
-            </button>
-            <button
-              type="button"
-              disabled={logging}
-              onClick={resetToStart}
-              className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-600"
-            >
-              Cancel
+              📷 Retake Photo
             </button>
           </div>
         </div>
